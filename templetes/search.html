@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>	
+	<head>
+		<title>Xigt Search</title>
+		<!-- <link href="search.css" type="text/css" rel="stylesheet" /> -->
+		
+		<script src="/static/search.js" charset="utf-8"></script>
+		<link rel="stylesheet" type="text/css" href="/static/xigtviz.css"/>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+		<script type="text/javascript">
+			var settings = {
+					    "tier_types": {
+					        "words": { "class": "interlinear" },
+					        "morphemes": { "class": "interlinear" },
+					        "glosses": { "class": "interlinear" },
+					        "phrases": { "class": "enumeration" },
+					        "translations": { "class": "enumeration" },
+					        "odin": { "class": "enumeration" },
+					        "syntax": { "reference_attributes": ["alignment", "children"] }
+					    },
+					    "default_tier_class": "",
+					    "max_igts_per_page": 10,
+					    "reference_attributes": [
+					        {"name": "alignment", "style": "background-color: #FFEF88;"},
+					        {"name": "segmentation", "style": "background-color: #97FF9B;"},
+					        {"name": "content", "style": "background-color: #FF9C99;"}
+					    ],
+					    "alignment_expression_operators": {
+					        "+": "",
+					        ",": " "
+					    },
+					    "show_legend": true,
+					    "default_content": "▨"
+					}
+		</script>
+  		<script src="/static/xigtviz.js" charset="utf-8"></script>
+  		<link rel="stylesheet" type="text/css" href="static/searchStyle.css">
+	</head>
+
+	<body>
+		<h1 id = "h1">
+		Xigt Search
+		</h1>
+
+		<div id="searchBlock">
+			<h2> </h2>
+
+			<div>
+				<!-- Language : <input id="languageinput" list="languages">
+				<datalist id="languages"></datalist> -->
+				<!-- <form action="/trieSearch" method="POST">
+				    Search For: <input type="text" name="pre">
+				    <br/>
+				    <div class = "button" >
+				    	<input type="submit">
+				    </div>
+				    
+				</form> -->
+				<form id = "searchForm" onsubmit="event.preventDefault(); lookFor(); return false;">
+				    <label for="corpus">
+				      Select corpus:
+				      <select id="corpus" name="corpus">
+				      </select>
+				      Words: <input id = "words" type="text" name="words">
+				    </label>	
+				   <!--  <button type = "submit" onClick="return lookFor(this.form);"></button> -->
+				    <input type="submit">   
+				</form>
+				
+				
+			</div>
+		</div>
+
+		<div id="resultsarea">
+			<div>
+				<p id = "num">
+					
+				</p>
+			</div>
+			<div>
+				<ul id = "igt_id">
+					
+				</ul>
+			</div>
+
+			<div id = "igt"> 
+			</div>
+			
+			<div id="current">				
+			<div class="loading" id="loadinglocation" style="display: none;">
+					<img src="https://webster.cs.washington.edu/images/babynames/loading.gif" alt="icon" />
+					Searching...
+				</div>
+				<div id="location"></div>
+			</div>
+
+			<div id="grapharea">
+
+				<div id="nodata" style="display: none;">
+					There is no data for that word.
+				</div>
+			</div>
+		</div>
+		
+		<div id="errors"></div>
+	</body>
+</html>
