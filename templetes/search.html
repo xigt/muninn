@@ -4,9 +4,10 @@
 		<title>Xigt Search</title>
 		<!-- <link href="search.css" type="text/css" rel="stylesheet" /> -->
 		
-		<script src="/static/search.js" charset="utf-8"></script>
-		<link rel="stylesheet" type="text/css" href="/static/xigtviz.css"/>
+		<script src="../static/search.js" charset="utf-8"></script>
+		<link rel="stylesheet" type="text/css" href="../static/xigtviz.css"/>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 		<script type="text/javascript">
 			var settings = {
 					    "tier_types": {
@@ -33,19 +34,14 @@
 					    "default_content": "▨"
 					}
 		</script>
-  		<script src="/static/xigtviz.js" charset="utf-8"></script>
-  		<link rel="stylesheet" type="text/css" href="static/searchStyle.css">
+  		<script src="../static/xigtviz.js" charset="utf-8"></script>
+  		<link rel="stylesheet" type="text/css" href="../static/searchStyle.css">
 	</head>
 
 	<body>
-		<h1 id = "h1">
-		Xigt Search
-		</h1>
-
-		<div id="searchBlock">
-			<h2> </h2>
-
-			<div>
+		<div id="frame">
+			<h1 id="header">XIGT Search</h1>
+			<div id="searcharea">
 				<!-- Language : <input id="languageinput" list="languages">
 				<datalist id="languages"></datalist> -->
 				<!-- <form action="/trieSearch" method="POST">
@@ -57,51 +53,60 @@
 				    
 				</form> -->
 				<form id = "searchForm" onsubmit="event.preventDefault(); lookFor(); return false;">
-				    <label for="corpus">
-				      Select corpus:
-				      <select id="corpus" name="corpus">
-				      </select>
-				      Words: <input id = "words" type="text" name="words">
-				    </label>	
+					<label for="corpus">Corpus:</label>
+				    <select id="corpus" name="corpus">
+				    </select>
+				    <label for="tiertype">Tier Type:</label>
+				    <select id="tiertype">
+				    	<option>words</option>
+				    	<option>glosses</option>
+				    	<option>morphemes</option>
+				    	<option>pos</option>
+				    </select>
+				    <label for="words">Words:</label>
+				    <input id = "words" type="text" name="words">	
 				   <!--  <button type = "submit" onClick="return lookFor(this.form);"></button> -->
-				    <input type="submit">   
+				    <input type="submit" id="submit" value="Search" />   
 				</form>
-				
-				
 			</div>
-		</div>
+			<div id="resultsarea">
+				<div id="loadingdiv">
+					<img  src="../static/icon.svg" alt="loading icon" id="loadingicon" />
+				</div>
 
-		<div id="resultsarea">
-			<div>
-				<p id = "num">
-					
-				</p>
-			</div>
-			<div>
-				<ul id = "igt_id">
-					
-				</ul>
-			</div>
+				<div>
+					<p id = "num">
+						
+					</p>
+				</div>
+				<div>
+					<ul id = "igt_id">
+						
+					</ul>
+				</div>
 
-			<div id = "igt"> 
+				<div id = "igt"> 
+				</div>
+				
+				<!-- <div id="current">				
+				<div class="loading" id="loadinglocation" style="display: none;">
+						<img src="https://webster.cs.washington.edu/images/babynames/loading.gif" alt="icon" />
+						Searching...
+					</div>
+					<div id="location"></div>
+				</div> -->
+
+				<!-- <div id="grapharea">
+
+					<div id="nodata" style="display: none;">
+						There is no data for that word.
+					</div>
+				</div> -->
 			</div>
 			
-			<div id="current">				
-			<div class="loading" id="loadinglocation" style="display: none;">
-					<img src="https://webster.cs.washington.edu/images/babynames/loading.gif" alt="icon" />
-					Searching...
-				</div>
-				<div id="location"></div>
-			</div>
-
-			<div id="grapharea">
-
-				<div id="nodata" style="display: none;">
-					There is no data for that word.
-				</div>
-			</div>
+			<div id="errors"></div>
+			<!-- <div id="footer"></div> -->
 		</div>
-		
-		<div id="errors"></div>
+
 	</body>
 </html>
