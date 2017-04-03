@@ -79,6 +79,11 @@ select {
 }
 
 #submit {
+	background-color: #5bc0de;
+	border-color: #46b8da;
+}
+
+#submit, #back {
     padding: 6px 12px;
     margin-bottom: 0;
     font-size: 14px;
@@ -90,8 +95,6 @@ select {
     border: 1px solid transparent;
     border-radius: 4px;
     color: #fff;
-    background-color: #5bc0de;
-    border-color: #46b8da;
     
 }
 
@@ -118,18 +121,26 @@ label {
 	width: 100%;
 }
 
-#igt_id {
+#igt_id, #sentences {
 	list-style-type: none;
+	margin-top: 0;
 }
 
-#igt_id li {
+#igt_id li, #sentences li {
 	border: 1px solid #ddd;
 	padding: 10px 15px;
 }
-
 #igt_id li:hover {
-	cursor: pointer;
 	font-weight: bold;
+}
+
+#igt_id li:hover, #sentences tr:hover  {
+	cursor: pointer;
+	
+}
+
+#sentences tr:hover {
+	background-color: #D3D3D3;
 }
 
 #loadingdiv {
@@ -156,3 +167,62 @@ label[for="tiertype"], label[for="words"] {
 	margin-left: 5px;
 }
 
+#igtlist {
+	width: 20%;
+	float: left;
+	/*max-height: 600px;*/
+	overflow-y: scroll;
+	overflow-x: hidden;
+	display: none;
+	overflow
+}
+
+#igt {
+	width: 70%;
+	float: left;
+	padding-left: 10px;
+}
+
+#igtdisplay {
+	overflow: hidden;
+}
+
+#back {
+	display: none;
+	margin-top: 65px;
+	cursor: pointer;
+	margin-left: 40px;
+	background-color: #5cb85c;
+    border-color: #4cae4c;
+}
+
+#tablediv table {
+	margin-left: auto;
+	margin-right: auto;
+	width: 100%;
+	table-layout:fixed
+}
+#tablediv td {
+	padding: 8px;
+    line-height: 1.42857143;
+    vertical-align: top;
+    border-top: 1px solid #ddd;
+    word-wrap:break-word
+}
+
+#tablediv span {
+	margin-right: 10px;
+	border: 1px solid;
+	padding: 5px;
+	line-height: 2.5;
+	background-color: #5bc0de;
+	border-color: #46b8da;
+
+    font-size: 14px;
+    font-weight: 400;
+    text-align: center;
+    vertical-align: middle;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: #fff;
+}

@@ -62,6 +62,7 @@
 				    	<option>glosses</option>
 				    	<option>morphemes</option>
 				    	<option>pos</option>
+				    	<option>phrases</option>
 				    </select>
 				    <label for="words">Words:</label>
 				    <input id = "words" type="text" name="words">	
@@ -73,38 +74,34 @@
 				<div id="loadingdiv">
 					<img  src="../static/icon.svg" alt="loading icon" id="loadingicon" />
 				</div>
-
+				<input id="back" type="button" name="back" value="Go Back" />
 				<div>
 					<p id = "num">
 						
 					</p>
 				</div>
-				<div>
-					<ul id = "igt_id">
+				<div id="tablediv">
+					<table id="sentences">
 						
-					</ul>
+					</table>
 				</div>
+				<!-- <ul id="sentences">
+					
+				</ul> -->
+				<div id="igtdisplay">
+					<div id="igtlist">
+						
+						<ul id = "igt_id">
+							
+						</ul>
+					</div>
 
-				<div id = "igt"> 
+					<div id = "igt"> 
+					</div>
 				</div>
-				
-				<!-- <div id="current">				
-				<div class="loading" id="loadinglocation" style="display: none;">
-						<img src="https://webster.cs.washington.edu/images/babynames/loading.gif" alt="icon" />
-						Searching...
-					</div>
-					<div id="location"></div>
-				</div> -->
-
-				<!-- <div id="grapharea">
-
-					<div id="nodata" style="display: none;">
-						There is no data for that word.
-					</div>
-				</div> -->
 			</div>
-			
 			<div id="errors"></div>
+
 			<!-- <div id="footer"></div> -->
 		</div>
 
