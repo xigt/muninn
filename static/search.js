@@ -58,7 +58,6 @@ function lookFor(){
 			      		lengthen();			  
 			      	})
 			      	.text(function(d) {
-			      			debugger;
 				        	return d.id;
 				     });
 				  var tr = d3.select("#sentences")
@@ -212,7 +211,6 @@ function lookFor(){
 	}
 
 	function getWords(igt) {
-		debugger;
 		var phrase = getPhrase(igt);
 		var tiers = igt.tiers;
 		var wordTier = findTier(tiers, "words");
