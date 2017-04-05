@@ -28,17 +28,32 @@
 var currListItem = null;
 
 function lookFor(){
-		loadingAnimation();
+	 	var referent = "";
+		if ($("#tiertype").val() == "words") {
+			referent =  "[referent()/@type=\"phrases\"]";
+		} else if ($("#tiertype").val() == "glosses") {
+			referent = "[referent()/@type=\"morphemes\"]";
+		} else if ($("#tiertype").val() == "pos") {
+			referent = " [referent()/@type=\"words\"]";
+		}
 
+		var entered = "";
+		if ($("#tiertype").val() == "pos") {
+			entered = $("#words").val().toUpperCase();
+		} else {
+			entered = $("#words").val();
+		}
+
+		loadingAnimation();
 		var name = document.forms.searchForm.corpus.value;
 		var word = document.forms.searchForm.words.value;
 		d3.xhr("http://odin.xigt.org/v1/corpora/" + name + "/igts?match=" + 
 					encodeURIComponent("tier[@type=\""+  $("#tiertype").val()  + 
-						"\"]/item[value()=\"" + word + "\"]"))
+						"\"]" + referent + "/item[value()=\"" + entered + "\"]"))
 			.mimeType("application/json")
 			.response(function(xhr) { return JSON.parse(xhr.responseText); })
 			.get(function(error, d) {
-			    if (error) throw error;
+			    if (error) throw error;		  
 			    d3.select("#num")
 			      .append("p")
 			      	.attr("id", "igt_count")
@@ -57,7 +72,7 @@ function lookFor(){
 			      		igtSelected(this);
 			      		lengthen();			  
 			      	})
-			      	.text(function(d) {
+			      	.text(function(d) {			     			     
 				        	return d.id;
 				     });
 				  var tr = d3.select("#sentences")
@@ -76,46 +91,81 @@ function lookFor(){
 			      		igtSelected(document.getElementById("scroll" + id));
 			      		lengthen();	
 			      		$('html,body').scrollTop(0);		  
-			      	});
+			      	});			      	
 			      	tr.append("td")
 			      		.text(function(d) {
 			      			return d.id;
 			      		})
 			      		.attr("width", "30%");
-			      	if ($("#tiertype").val() == "phrases") {
-				      	tr.append("td")
-				      		.append("span")
-				      		.text(function(d) {
-				      			return getPhrase(d);
-				      		});
-			      	} else if ($("#tiertype").val() == "words") {
-			      		tr.append("td")
-			      			.selectAll("span")
-					    	.data(function(d) {
-					    		return getWords(d);
-					    	})
-					      	.enter()
-					      	.append("span")
-					      	.text(function(d) {
-					      		return d;
-					      	});
-			      	} else if ($("#tiertype").val() == "morphemes") {
-			      		tr.append("td")
-			      			.selectAll("span")
-					    	.data(function(d) {
-					    		return getMorphemes(d);
-					    	})
-					      	.enter()
-					      	.append("span")
-					      	.text(function(d) {
-					      		return d;
-					      	});
-			      	}
+			      	addDetails(tr);
+			      	var trHeader = $("<tr></tr>");
+			      	var th1 = $("<th></th>");
+			      	var th2 = $("<th></th>");
+			      	th1.append("igt Id");
+			      	th2.append($("#tiertype").val());
+			      	trHeader.append(th1);
+			      	trHeader.append(th2);
+			      	$("#tablediv table").prepend(trHeader);
+			      	
 			    loadResults();
 			
     		});
     		return false;
     	// igtLayout("#igt", xigtJsonData);
+	}
+
+	function addDetails(tr) {
+		if ($("#tiertype").val() == "phrases") {
+	      	tr.append("td")
+	      		.append("span")
+	      		.text(function(d) {
+	      			return getPhrase(d);
+	      		});
+      	} else if ($("#tiertype").val() == "words") {
+      		tr.append("td")
+      			.selectAll("span")
+		    	.data(function(d) {
+		    		return getWords(d);
+		    	})
+		      	.enter()
+		      	.append("span")
+		      	.text(function(d) {
+		      		return d + " ";
+		      	});
+      	} else if ($("#tiertype").val() == "morphemes") {
+      		tr.append("td")
+      			.selectAll("span")
+		    	.data(function(d) {
+		    		return getMorphemes(d);
+		    	})
+		      	.enter()
+		      	.append("span")
+		      	.text(function(d) {
+		      		return d + " ";
+		      	});
+      	} else if ($("#tiertype").val() == "glosses") {
+      		tr.append("td")
+      			.selectAll("span")
+		    	.data(function(d) {
+		    		return getGlosses(d);
+		    	})
+		      	.enter()
+		      	.append("span")
+		      	.text(function(d) {
+		      		return d + " ";
+		      	});
+      	} else {
+      		tr.append("td")
+	  			.selectAll("span")
+		    	.data(function(d) {
+		    		return getPos(d);
+		    	})
+		      	.enter()
+		      	.append("span")
+		      	.text(function(d) {
+		      		return d + " ";
+		      	});		      	
+      	}
 	}
 
 	function loadingAnimation() {
@@ -136,13 +186,15 @@ function lookFor(){
 		var listItems2 = $("#sentences tr");
 	    for (var i = 0; i < listItems.length; i++) {
 	    	listItems[i].setAttribute("id", "scrolllistitem" + i);
-	    	listItems2[i].setAttribute("id", "listitem" + i);
+	    }
+	    for (var i = 0; i < listItems2.length; i++) {
+	    	listItems2[i].setAttribute("id", "listitem" + (i - 1));
 	    }
 	    $("#loadingicon").hide();
 	    $("#num").show();
-	    $("#sentences").show();
 	    if (listItems.length > 0) {
 	    	$("#igtlist").show();
+	    	$("#sentences").show();
 	    }
 	}
 
@@ -170,14 +222,21 @@ function lookFor(){
 
 	}
 
-	function findTier(tiers, type) {
+	function findTier(tiers, type, id) {
 		var found = false;
 		var position = 0;
 		var foundTier = null;
 		while (!found && position <= tiers.length - 1) {
 			if (tiers[position].type == type) {
-				foundTier = tiers[position];
-				found = true;
+				if (id != null) {
+					if (tiers[position].id == id) {
+						foundTier = tiers[position];
+						found = true;
+					}
+				} else {
+					foundTier = tiers[position];
+					found = true;
+				}
 			}
 			position++;
 		}
@@ -215,6 +274,7 @@ function lookFor(){
 		var tiers = igt.tiers;
 		var wordTier = findTier(tiers, "words");
 		var items = wordTier.items;
+		// Factor this code out
 		var words = [];
 		for (var i = 0; i < items.length; i++) {
 			var span = getSpan(items[i].attributes.segmentation);
@@ -222,6 +282,7 @@ function lookFor(){
 			words.push(word);
 		}
 		return words;
+		// End of factoring
 	}
 
 	function getSpan(segment) {
@@ -239,6 +300,7 @@ function lookFor(){
 		var tiers = igt.tiers;
 		var morphemeTier = findTier(tiers, "morphemes");
 		var items = morphemeTier.items;
+		// Factor this code out.
 		var morphemes = [];
 		for (var i = 0; i < items.length; i++) {
 			var segment = items[i].attributes.segmentation;
@@ -253,6 +315,70 @@ function lookFor(){
 			}
 		}
 		return morphemes;
+	}
+
+	function getGlosses(igt) {
+		var tiers = igt.tiers;
+		var glossTier = findTier(tiers, "glosses", "g");
+		var wGlosses = getGlossesW(igt);
+		var items = glossTier.items;
+		// Factor this code out
+		var glosses = [];
+		for (var i = 0; i < items.length; i++) {
+			var segment = items[i].attributes.content;
+			if (!segment.includes("[")) {
+				glossNumber = parseInt(segment.substring(2));
+				glosses.push(wGlosses[glossNumber - 1]);
+			} else {
+				var index = segment.indexOf("[");
+				var glossNumber = parseInt(segment.substring(2, index));
+				var span = getSpan(segment);
+				glosses.push(wGlosses[glossNumber - 1].substring(span[0], span[1]));
+			}
+		}
+		return glosses;
+	}
+
+	function getGlossesW(igt) {
+		// get text for glosses with id = gw
+		var tiers = igt.tiers;
+		var glossWTier = findTier(tiers, "glosses", "gw");
+		var tierId = glossWTier.attributes.content;
+		var segment = glossWTier.items[0].attributes.content;
+		var itemId = null;
+
+		if (!segment.includes("[")) {
+			itemId = segment;
+		} else {
+			var index = segment.indexOf("[");
+			var itemId = segment.substring(0, index);
+		}
+
+		var contentTier = idMatcher(tiers, tierId);
+		var item = idMatcher(contentTier.items, itemId);
+
+		var content = item.text;
+
+		// put them into gw array NOTE: FACTOR THIS CODE OUT
+		var items = glossWTier.items;
+		var glosses = [];
+		for (var i = 0; i < items.length; i++) {
+			var span = getSpan(items[i].attributes.content);
+			var gloss = content.substring(span[0], span[1]);
+			glosses.push(gloss);
+		}
+		return glosses;
+	}
+
+	function getPos(igt) {
+		var tiers = igt.tiers;
+		var posTier = findTier(tiers, "pos", "w-pos");
+		var items = posTier.items;
+		var poses = [];
+		for (var i = 0; i < items.length; i++) {
+			poses.push(items[i].text);
+		}
+		return poses;
 	}
 
 

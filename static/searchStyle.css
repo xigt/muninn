@@ -86,16 +86,21 @@ select {
 #submit, #back {
     padding: 6px 12px;
     margin-bottom: 0;
-    font-size: 14px;
-    font-weight: 400;
     line-height: 1.42857143;
-    text-align: center;
-    vertical-align: middle;
     cursor: pointer;
-    border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: 4px; 
+}
+
+#submit, #back, #tablediv span {
+	text-align: center;
+    vertical-align: middle;
     color: #fff;
-    
+}
+
+#tablediv th, #tablediv span, #submit, #back {
+	font-size: 14px;
+    font-weight: 400;
+    border: 1px solid transparent;
 }
 
 #loadicon {
@@ -200,7 +205,8 @@ label[for="tiertype"], label[for="words"] {
 	margin-left: auto;
 	margin-right: auto;
 	width: 100%;
-	table-layout:fixed
+	table-layout:fixed;
+	border-collapse: collapse;
 }
 #tablediv td {
 	padding: 8px;
@@ -217,12 +223,20 @@ label[for="tiertype"], label[for="words"] {
 	line-height: 2.5;
 	background-color: #5bc0de;
 	border-color: #46b8da;
+}
 
-    font-size: 14px;
+#tablediv table tr:first-child {
+	background-color: DarkGray;
+	color: white;
+}
+
+#tablediv th {
+	padding: 10px;
+}
+
+#tablediv th, #tablediv span {
+	/*factor out this code*/
+	font-size: 14px;
     font-weight: 400;
-    text-align: center;
-    vertical-align: middle;
     border: 1px solid transparent;
-    border-radius: 4px;
-    color: #fff;
 }
