@@ -47,125 +47,90 @@ function lookFor(){
 		loadingAnimation();
 		var name = document.forms.searchForm.corpus.value;
 		var word = document.forms.searchForm.words.value;
-		d3.xhr("http://odin.xigt.org/v1/corpora/" + name + "/igts?match=" + 
+		d3.xhr("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + 
 					encodeURIComponent("tier[@type=\""+  $("#tiertype").val()  + 
 						"\"]" + referent + "/item[value()=\"" + entered + "\"]"))
 			.mimeType("application/json")
 			.response(function(xhr) { return JSON.parse(xhr.responseText); })
 			.get(function(error, d) {
-			    if (error) throw error;		  
+			    if (error) throw error;
+			    currIgts = d.igts;	  
 			    d3.select("#num")
 			      .append("p")
 			      	.attr("id", "igt_count")
 			        .text(function() {
 			            return "Number of igts found: " + d.igt_count;
 			     	});
-			    d3.select("#igt_id")
-			      .selectAll("li")
-			      .data(d.igts)
-			      .enter()
-			      .append("li")
-			      	//.append("a")
-			      	.on("click", function(d){
-			      		d3.select("#igt").html("");
-			      		igtLayout("#igt", d);
-			      		igtSelected(this);
-			      		lengthen();			  
-			      	})
-			      	.text(function(d) {			     			     
-				        	return d.id;
-				     });
-				  var tr = d3.select("#sentences")
-			    	.selectAll("td")
-			    	.data(d.igts)
-			      	.enter()
-			      	.append("tr");
-			      	tr.on("click", function(d){
-			      		d3.select("#igt").html("");
-			      		igtLayout("#igt", d);
-			      		$("#sentences").hide();
-			      		$("#igtdisplay").show();
-			      		$("#back").show();
-			      		var id = this.getAttribute("id");
-			      		// change here
-			      		igtSelected(document.getElementById("scroll" + id));
-			      		lengthen();	
-			      		$('html,body').scrollTop(0);		  
-			      	});			      	
-			      	tr.append("td")
-			      		.text(function(d) {
-			      			return d.id;
-			      		})
-			      		.attr("width", "30%");
-			      	addDetails(tr);
-			      	var trHeader = $("<tr></tr>");
-			      	var th1 = $("<th></th>");
-			      	var th2 = $("<th></th>");
-			      	th1.append("igt Id");
-			      	th2.append($("#tiertype").val());
-			      	trHeader.append(th1);
-			      	trHeader.append(th2);
-			      	$("#tablediv table").prepend(trHeader);
-			      	
-			    loadResults();
+			    if (d.igt_count > 0) {
+				    d3.select("#igt_id")
+				      .selectAll("li")
+				      .data(d.igts)
+				      .enter()
+				      .append("li")
+				      	//.append("a")
+				      	.on("click", function(d){
+				      		d3.select("#igt").html("");
+				      		igtLayout("#igt", d);
+				      		igtSelected(this);
+				      		lengthen();			  
+				      	})
+				      	.text(function(d) {			     			     
+					        	return d.id;
+					     });
+					  var tr = d3.select("#sentences")
+				    	.selectAll("td")
+				    	.data(d.igts)
+				      	.enter()
+				      	.append("tr");
+				      	tr.on("click", function(d){
+				      		d3.select("#igt").html("");
+				      		igtLayout("#igt", d);
+				      		$("#sentences").hide();
+				      		$("#igtdisplay").show();
+				      		$("#back").show();
+				      		var id = this.getAttribute("id");
+				      		// change here
+				      		igtSelected(document.getElementById("scroll" + id));
+				      		lengthen();	
+				      		$('html,body').scrollTop(0);		  
+				      	});			      	
+				      	tr.append("td")
+				      		.text(function(d) {
+				      			return d.id;
+				      		})
+				      		.attr("width", "30%")
+				      		.classed("hoveredid");
+				      	if ($("#tiertype").val() == "words") {
+				      		displayItemMatched(currIgts, 1);
+				      	} else if ($("#tiertype").val() == "morphemes") {
+				      		displayMorphemeMatched(currIgts);
+				      	} else if ($("#tiertype").val() == "pos") {
+				      		displayItemMatched(currIgts, 5);
+				      	} else if ($("#tiertype").val() == "glosses") {
+				      		displayItemMatched(currIgts, 1);
+				      	} else {
+				      		tr.append("td")
+					      		.append("span")
+					      		.text(function(d) {
+					      			return getPhrase(d);
+					      		});
+				      	}
+				      	var trHeader = $("<tr></tr>");
+				      	var th1 = $("<th></th>");
+				      	var th2 = $("<th></th>");
+				      	th1.append("igt Id");
+				      	th2.append($("#tiertype").val());
+				      	trHeader.append(th1);
+				      	trHeader.append(th2);
+				      	$("#sentences").prepend(trHeader);
+				}
+				loadResults();
+				centerSpans();
+			    
 			
     		});
     		return false;
     	// igtLayout("#igt", xigtJsonData);
-	}
-
-	function addDetails(tr) {
-		if ($("#tiertype").val() == "phrases") {
-	      	tr.append("td")
-	      		.append("span")
-	      		.text(function(d) {
-	      			return getPhrase(d);
-	      		});
-      	} else if ($("#tiertype").val() == "words") {
-      		tr.append("td")
-      			.selectAll("span")
-		    	.data(function(d) {
-		    		return getWords(d);
-		    	})
-		      	.enter()
-		      	.append("span")
-		      	.text(function(d) {
-		      		return d + " ";
-		      	});
-      	} else if ($("#tiertype").val() == "morphemes") {
-      		tr.append("td")
-      			.selectAll("span")
-		    	.data(function(d) {
-		    		return getMorphemes(d);
-		    	})
-		      	.enter()
-		      	.append("span")
-		      	.text(function(d) {
-		      		return d + " ";
-		      	});
-      	} else if ($("#tiertype").val() == "glosses") {
-      		tr.append("td")
-      			.selectAll("span")
-		    	.data(function(d) {
-		    		return getGlosses(d);
-		    	})
-		      	.enter()
-		      	.append("span")
-		      	.text(function(d) {
-		      		return d + " ";
-		      	});
-      	} else {
-      		tr.append("td")
-	  			.selectAll("span")
-		    	.data(function(d) {
-		    		return getPos(d);
-		    	})
-		      	.enter()
-		      	.append("span")
-		      	.text(function(d) {
-		      		return d + " ";
-		      	});		      	
-      	}
 	}
 
 	function loadingAnimation() {
@@ -222,6 +187,7 @@ function lookFor(){
 
 	}
 
+	// Get rid of this you can just use idMatcher
 	function findTier(tiers, type, id) {
 		var found = false;
 		var position = 0;
@@ -280,6 +246,7 @@ function lookFor(){
 			var span = getSpan(items[i].attributes.segmentation);
 			var word = phrase.substring(span[0], span[1]);
 			words.push(word);
+			/*words.push(" ");*/
 		}
 		return words;
 		// End of factoring
@@ -293,28 +260,6 @@ function lookFor(){
 		var lastNum = parseInt(segment.substring(index2 + 1, index3));
 		var arr = [firstNum, lastNum];
 		return arr;
-	}
-
-	function getMorphemes(igt) {
-		var words = getWords(igt);
-		var tiers = igt.tiers;
-		var morphemeTier = findTier(tiers, "morphemes");
-		var items = morphemeTier.items;
-		// Factor this code out.
-		var morphemes = [];
-		for (var i = 0; i < items.length; i++) {
-			var segment = items[i].attributes.segmentation;
-			if (!segment.includes("[")) {
-				wordNumber = parseInt(segment.substring(1));
-				morphemes.push(words[wordNumber - 1]);
-			} else {
-				var index = segment.indexOf("[");
-				var wordNumber = parseInt(segment.substring(1, index));
-				var span = getSpan(segment);
-				morphemes.push(words[wordNumber - 1].substring(span[0], span[1]));
-			}
-		}
-		return morphemes;
 	}
 
 	function getGlosses(igt) {
@@ -370,15 +315,120 @@ function lookFor(){
 		return glosses;
 	}
 
-	function getPos(igt) {
-		var tiers = igt.tiers;
-		var posTier = findTier(tiers, "pos", "w-pos");
-		var items = posTier.items;
-		var poses = [];
-		for (var i = 0; i < items.length; i++) {
-			poses.push(items[i].text);
+	function getMatchObject(igt) {
+		var metadata = igt.metadata;
+		var matchObject = null;
+		for (var i = 0; i < metadata.length; i++) {
+			if (metadata[i].type == "QueryResult") {
+				var matchObject =  metadata[i].metas[0].attributes;
+			} 
 		}
-		return poses;
+		return matchObject;
+	}
+
+	
+
+	
+
+	function displayMorphemeMatched(igts) {
+		var allRows = $("#sentences").children();
+		for (var i = 0; i < igts.length; i++) {
+			var igt = igts[i];
+			var words = getWords(igt);
+			var row = $(allRows[i]);
+			var td = $("<td></td>");
+			td.attr("id", "datatd" + i);
+			var matchObject = getMatchObject(igt);
+			// Get rid of findTier and just use idMatcher
+			var morphemeTier = idMatcher(igt.tiers, matchObject.tier);
+			var item = idMatcher(morphemeTier.items, matchObject.item);
+			var segment = item.attributes.segmentation;
+			var wordNumber = null;
+			var whole = null;
+			if (!segment.includes("[")) {
+				wordNumber = parseInt(segment.substring(1));
+				whole = true;
+			} else {
+				var index = segment.indexOf("[");
+				var wordNumber = parseInt(segment.substring(1, index));
+				whole = false;
+			}
+			for (var j = 0; j < words.length; j++) {
+				if (j != (wordNumber - 1)) {
+					td.append(words[j] + " ");
+				} else {
+					var span = $("<span></span>");
+					span.css("color", "white");
+					span.addClass("matched");
+					span.attr("id", "span" + i);
+					if (!whole) {
+						var range = getSpan(segment);
+						var firstPart = words[j].substring(0, range[0])
+						td.append(firstPart);
+						var middle = words[j].substring(range[0], range[1]);
+						span.html(middle);
+						td.append(span);
+						var last = words[j].substring(range[1]);
+						td.append(last);
+					} else {
+						span.html(words[j]);
+						td.append(span);
+					}					
+					td.append(" ");
+				}
+			}
+			row.append(td);
+		}
+	}
+
+	
+	function displayItemMatched(igts, index) {
+		var allRows = $("#sentences").children();
+		for (var i = 0; i < igts.length; i++) {
+			var igt = igts[i];
+			var items = null;
+			if ($("#tiertype").val() == "words" || $("#tiertype").val() == "pos") {
+				items = getWords(igt);
+			} else {
+				items = getGlosses(igt);
+			}
+			var row = $(allRows[i]);
+			var td = $("<td></td>");
+			td.attr("id", "datatd" + i);			
+			var matchObject = getMatchObject(igt);
+			itemNumber = parseInt(matchObject.item.substring(index));
+			var span = $("<span></span>");
+			span.html(items[itemNumber - 1]);
+			span.css("color", "white");
+			span.addClass("matched");
+			span.attr("id", "span" + i);
+			for (var j = 0; j < items.length; j++) {
+				if (j != (itemNumber - 1)) {
+					td.append(items[j] + " ");
+				} else {
+					td.append(span);
+					td.append(" ");
+				}
+			}
+			row.append(td);
+		}
+	}
+
+	function centerSpans() {
+		for (var i = 0; i < $("#sentences").children().length - 1; i++) {
+			var td = $("#datatd" + i);
+			var span = $("#span" + i);
+			spanLeft = parseInt(span.position().left);
+			tdLeft = parseInt(td.position().left);
+			spanFromEdge = spanLeft - (tdLeft + 8);
+			middle = (parseInt(td.css("width")) - 16) / 2;
+			numOfPxs = middle - spanFromEdge;
+			var spaces = $("<span></span>");
+			var spanWidth = parseInt(span.css("width"));
+			// Change this to move span over to the left. Probably use 50px - 70px
+			spaces.css("margin-right", (numOfPxs - spanWidth / 2) + "px");
+			td.prepend(spaces);
+		}
 	}
 
 

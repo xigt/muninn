@@ -135,17 +135,14 @@ label {
 	border: 1px solid #ddd;
 	padding: 10px 15px;
 }
+
+#igt_id li:hover, #sentences tr:hover {
+	cursor: pointer;
+		
+}
+
 #igt_id li:hover {
 	font-weight: bold;
-}
-
-#igt_id li:hover, #sentences tr:hover  {
-	cursor: pointer;
-	
-}
-
-#sentences tr:hover {
-	background-color: #D3D3D3;
 }
 
 #loadingdiv {
@@ -208,25 +205,15 @@ label[for="tiertype"], label[for="words"] {
 	table-layout:fixed;
 	border-collapse: collapse;
 }
-#tablediv td {
-	padding: 8px;
-    line-height: 1.42857143;
-    vertical-align: top;
-    border-top: 1px solid #ddd;
-    word-wrap:break-word
-}
 
+/*get rid of this. Note: I need this for phrase, since it is stored as a span.
+I need to change phrase into a text node not a span. */
 #tablediv span {
-	margin-right: 10px;
-	border: 1px solid;
-	padding: 5px;
-	line-height: 2.5;
-	background-color: #5bc0de;
-	border-color: #46b8da;
+	color: black;
 }
 
 #tablediv table tr:first-child {
-	background-color: DarkGray;
+	background-color: #31bc86;
 	color: white;
 }
 
@@ -236,7 +223,44 @@ label[for="tiertype"], label[for="words"] {
 
 #tablediv th, #tablediv span {
 	/*factor out this code*/
-	font-size: 14px;
+	font-size: 17px;
     font-weight: 400;
+    
+}
+
+#tablediv tr:nth-child(even) {
+	background-color: lightgray;
+
+}
+
+.matched {
+	color: #fff;
+    background-color: #333;
+    border-radius: 3px;
+    padding: 2px 2px;
     border: 1px solid transparent;
 }
+
+#sentences td {
+	font-size: 17px;
+    font-weight: 400;
+    line-height: 1.5;
+    word-spacing: 2px;
+    vertical-align: top;
+    border-top: 1px solid #ddd;
+    word-wrap:break-word;
+    padding-bottom: 7px;
+    padding-top: 7px;
+}
+/*
+table header row color #31bc86
+
+rgba(129,208,177,.3); highligted color
+
+gray #f5f5f5;
+
+white #f8f8f8
+
+font color   #7c8d87
+
+*/
