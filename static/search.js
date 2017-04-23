@@ -67,62 +67,28 @@ function lookFor(){
 				      .data(d.igts)
 				      .enter()
 				      .append("li")
-				      	//.append("a")
 				      	.on("click", function(d){
 				      		d3.select("#igt").html("");
 				      		igtLayout("#igt", d);
 				      		igtSelected(this);
 				      		lengthen();			  
 				      	})
-				      	.text(function(d) {			     			     
+				      	.text(function(d) {		     			     
 					        	return d.id;
 					     });
-					  var tr = d3.select("#sentences")
-				    	.selectAll("td")
-				    	.data(d.igts)
-				      	.enter()
-				      	.append("tr");
-				      	tr.on("click", function(d){
-				      		d3.select("#igt").html("");
-				      		igtLayout("#igt", d);
-				      		$("#sentences").hide();
-				      		$("#igtdisplay").show();
-				      		$("#back").show();
-				      		var id = this.getAttribute("id");
-				      		// change here
-				      		igtSelected(document.getElementById("scroll" + id));
-				      		lengthen();	
-				      		$('html,body').scrollTop(0);		  
-				      	});			      	
-				      	tr.append("td")
-				      		.text(function(d) {
-				      			return d.id;
-				      		})
-				      		.attr("width", "30%")
-				      		.classed("hoveredid");
-				      	if ($("#tiertype").val() == "words") {
-				      		displayItemMatched(currIgts, 1);
-				      	} else if ($("#tiertype").val() == "morphemes") {
-				      		displayMorphemeMatched(currIgts);
-				      	} else if ($("#tiertype").val() == "pos") {
-				      		displayItemMatched(currIgts, 5);
-				      	} else if ($("#tiertype").val() == "glosses") {
-				      		displayItemMatched(currIgts, 1);
-				      	} else {
-				      		tr.append("td")
-					      		.append("span")
-					      		.text(function(d) {
-					      			return getPhrase(d);
-					      		});
-				      	}
-				      	var trHeader = $("<tr></tr>");
-				      	var th1 = $("<th></th>");
-				      	var th2 = $("<th></th>");
-				      	th1.append("igt Id");
-				      	th2.append($("#tiertype").val());
-				      	trHeader.append(th1);
-				      	trHeader.append(th2);
-				      	$("#sentences").prepend(trHeader);
+				    if ($("#tiertype").val() == "phrases") {
+				    	createPhraseRows(currIgts);
+				    } else {
+				    	createRows(currIgts);
+				    }
+			      	var trHeader = $("<tr></tr>");
+			      	var th1 = $("<th></th>");
+			      	var th2 = $("<th></th>");
+			      	th1.append("igt Id");
+			      	th2.append($("#tiertype").val());
+			      	trHeader.append(th1);
+			      	trHeader.append(th2);
+			      	$("#sentences").prepend(trHeader);
 				}
 				loadResults();
 				centerSpans();
@@ -145,15 +111,10 @@ function lookFor(){
 		$("#loadingicon").show();
 	}
 
-	// I changed this from li to tr
 	function loadResults() {
 		var listItems = $("#igt_id li");
-		var listItems2 = $("#sentences tr");
 	    for (var i = 0; i < listItems.length; i++) {
 	    	listItems[i].setAttribute("id", "scrolllistitem" + i);
-	    }
-	    for (var i = 0; i < listItems2.length; i++) {
-	    	listItems2[i].setAttribute("id", "listitem" + (i - 1));
 	    }
 	    $("#loadingicon").hide();
 	    $("#num").show();
@@ -181,10 +142,8 @@ function lookFor(){
 			var tierId = phraseTier.attributes.content;
 			var items = idMatcher(tiers, tierId).items;
 			var item = idMatcher(items, itemId);
-			return /*igt.id + " " + */item.text;
-			
+			return item.text;
 		}
-
 	}
 
 	// Get rid of this you can just use idMatcher
@@ -246,7 +205,6 @@ function lookFor(){
 			var span = getSpan(items[i].attributes.segmentation);
 			var word = phrase.substring(span[0], span[1]);
 			words.push(word);
-			/*words.push(" ");*/
 		}
 		return words;
 		// End of factoring
@@ -285,25 +243,20 @@ function lookFor(){
 	}
 
 	function getGlossesW(igt) {
-		// get text for glosses with id = gw
 		var tiers = igt.tiers;
 		var glossWTier = findTier(tiers, "glosses", "gw");
 		var tierId = glossWTier.attributes.content;
 		var segment = glossWTier.items[0].attributes.content;
 		var itemId = null;
-
 		if (!segment.includes("[")) {
 			itemId = segment;
 		} else {
 			var index = segment.indexOf("[");
 			var itemId = segment.substring(0, index);
 		}
-
 		var contentTier = idMatcher(tiers, tierId);
 		var item = idMatcher(contentTier.items, itemId);
-
 		var content = item.text;
-
 		// put them into gw array NOTE: FACTOR THIS CODE OUT
 		var items = glossWTier.items;
 		var glosses = [];
@@ -320,102 +273,171 @@ function lookFor(){
 		var matchObject = null;
 		for (var i = 0; i < metadata.length; i++) {
 			if (metadata[i].type == "QueryResult") {
-				var matchObject =  metadata[i].metas[0].attributes;
+				var matchObject =  metadata[i].metas;
 			} 
 		}
 		return matchObject;
 	}
 
-	
+	function createRows(igts) {
+		var tierType = $("#tiertype").val();
+		var rowIndex = 0;
+		var mainSpanIndex = 0;
+		for (var i = 0; i < igts.length; i++) {
+			debugger;
+			var igt = igts[i];
+			var matchObject = getMatchObject(igt);
+			for (var j = 0; j < matchObject.length; j++) {
+				var row = $("<tr></tr>");
+				var firstTd = $("<td></td>");
+				firstTd.html(igt.id);
+				var secondTd = createRightTd(igt, tierType, rowIndex);
+				if (tierType == "words" || tierType == "pos" || tierType == "glosses") {
+					var index = null;
+					if (tierType == "words" || tierType == "glosses") {
+			      		index = 1;
+			      	} else {
+			      		index = 5;
+			      	} 
+			      	// Make this more efficent since sometimes an igt has more than one match
+			      	// and this is calculated multiple times. 
+					var matchedItemNumbers = [];
+					for (var k = 0; k < matchObject.length; k++) {
+						var matchedItemId = matchObject[k].attributes.item
+						var matchedItemNumber = parseInt(matchedItemId.substring(index));
+						matchedItemNumbers.push(matchedItemNumber);
+					}
+					highlightMatch(secondTd, j, matchedItemNumbers, mainSpanIndex);
+				} else {
+					var morphemeTier = idMatcher(igt.tiers, matchObject[0].attributes.tier);
+					highlightMatchMorphemes(secondTd, matchObject, morphemeTier, mainSpanIndex, j);
+				}
+				mainSpanIndex++;
+				rowIndex++;
+				row.append(firstTd);
+				row.append(secondTd);
+				row.click({"igt": igt}, igtClick);
+				row.mouseover(showFullText);
+				row.mouseout(showPartialText);
+				row.attr("class", "listitem" + i);
+				$("#sentences").append(row);
 
-	
+			}
+		}
 
-	function displayMorphemeMatched(igts) {
-		var allRows = $("#sentences").children();
+	}
+
+	function igtClick(event) {
+		d3.select("#igt").html("");
+  		igtLayout("#igt", event.data.igt);
+  		$("#sentences").hide();
+  		$("#igtdisplay").show();
+  		$("#back").show();
+  		var id = this.getAttribute("class");
+  		// change here
+  		igtSelected(document.getElementById("scroll" + id));
+  		lengthen();	
+  		$('html,body').scrollTop(0);
+	}
+
+	function createPhraseRows(igts) {
+		var tierType = $("#tiertype").val();
 		for (var i = 0; i < igts.length; i++) {
 			var igt = igts[i];
-			var words = getWords(igt);
-			var row = $(allRows[i]);
-			var td = $("<td></td>");
-			td.attr("id", "datatd" + i);
-			var matchObject = getMatchObject(igt);
-			// Get rid of findTier and just use idMatcher
-			var morphemeTier = idMatcher(igt.tiers, matchObject.tier);
-			var item = idMatcher(morphemeTier.items, matchObject.item);
-			var segment = item.attributes.segmentation;
-			var wordNumber = null;
-			var whole = null;
-			if (!segment.includes("[")) {
-				wordNumber = parseInt(segment.substring(1));
-				whole = true;
-			} else {
-				var index = segment.indexOf("[");
-				var wordNumber = parseInt(segment.substring(1, index));
-				whole = false;
-			}
-			for (var j = 0; j < words.length; j++) {
-				if (j != (wordNumber - 1)) {
-					td.append(words[j] + " ");
+			var row = $("<tr></tr>");
+			var firstTd = $("<td></td>");
+			firstTd.html(igt.id);
+			var secondTd = $("<td></td>");
+			secondTd.html(getPhrase(igt));
+			row.append(firstTd);
+			row.append(secondTd);
+			row.click({"igt": igt}, igtClick);
+			row.attr("class", "listitem" + i);
+			$("#sentences").append(row);
+		}
+	}
+
+	function highlightMatchMorphemes(td, matchObject, morphemeTier, idIndex, mainMatchIndex) {
+		var spans = td.children();
+			for (var j = 0; j < matchObject.length; j++) {
+				var matchedItemId = matchObject[j].attributes.item
+				var item = idMatcher(morphemeTier.items, matchedItemId);
+				var segment = item.attributes.segmentation;
+				var wordNumber = null;
+				var whole = null;
+				if (!segment.includes("[")) {
+					wordNumber = parseInt(segment.substring(1));
+					whole = true;
 				} else {
-					var span = $("<span></span>");
-					span.css("color", "white");
+					var index = segment.indexOf("[");
+					var wordNumber = parseInt(segment.substring(1, index));
+					whole = false;
+				}
+				var span = $("<span></span>");
+				var spanContainingMorpheme = $(spans[wordNumber - 1]);
+				var word = spanContainingMorpheme.html();
+				spanContainingMorpheme.html("");
+				if (j == mainMatchIndex) {
 					span.addClass("matched");
-					span.attr("id", "span" + i);
-					if (!whole) {
-						var range = getSpan(segment);
-						var firstPart = words[j].substring(0, range[0])
-						td.append(firstPart);
-						var middle = words[j].substring(range[0], range[1]);
-						span.html(middle);
-						td.append(span);
-						var last = words[j].substring(range[1]);
-						td.append(last);
-					} else {
-						span.html(words[j]);
-						td.append(span);
-					}					
-					td.append(" ");
+					span.attr("id", "span" + idIndex);
+				} else {
+					span.addClass("othermatch");
 				}
+				if (!whole) {
+					var range = getSpan(segment);
+					var firstPart = word.substring(0, range[0])
+					spanContainingMorpheme.append(firstPart);
+					var middle = word.substring(range[0], range[1]);
+					span.html(middle);
+					spanContainingMorpheme.append(span);
+					var last = word.substring(range[1]);
+					spanContainingMorpheme.append(last);
+				} else {
+					span.html(word);
+					spanContainingMorpheme.append(span);
+				}	
+
 			}
-			row.append(td);
+	}
+
+	function createRightTd(igt, tierType, idIndex) {
+		var items = null;
+		if (tierType == "words" || tierType == "pos" || tierType == "morphemes" || tierType == "phrases") {
+			items = getWords(igt);
+		} else {
+			items = getGlosses(igt);
+		}
+		var td = $("<td></td>");
+		td.attr("id", "datatd" + idIndex);
+		for (var i = 0; i < items.length; i++) {
+			var span = $("<span></span>");
+			span.html(items[i]);
+			td.append(span);
+			td.append(" ");
+		}
+		return td;
+	}
+
+	function highlightMatch(td, mainMatchIndex, matchedItemNumbers, idIndex) {
+		var spans = td.children();
+		for (var j = 0; j < matchedItemNumbers.length; j++) {
+			var position = matchedItemNumbers[j] - 1;
+			var matchedSpan = $(spans[position]);
+			if (j == mainMatchIndex) {
+				matchedSpan.addClass("matched");
+				matchedSpan.attr("id", "span" + idIndex);
+			} else {
+				matchedSpan.addClass("othermatch");
+			}
 		}
 	}
+
 
 	
-	function displayItemMatched(igts, index) {
-		var allRows = $("#sentences").children();
-		for (var i = 0; i < igts.length; i++) {
-			var igt = igts[i];
-			var items = null;
-			if ($("#tiertype").val() == "words" || $("#tiertype").val() == "pos") {
-				items = getWords(igt);
-			} else {
-				items = getGlosses(igt);
-			}
-			var row = $(allRows[i]);
-			var td = $("<td></td>");
-			td.attr("id", "datatd" + i);			
-			var matchObject = getMatchObject(igt);
-			itemNumber = parseInt(matchObject.item.substring(index));
-			var span = $("<span></span>");
-			span.html(items[itemNumber - 1]);
-			span.css("color", "white");
-			span.addClass("matched");
-			span.attr("id", "span" + i);
-			for (var j = 0; j < items.length; j++) {
-				if (j != (itemNumber - 1)) {
-					td.append(items[j] + " ");
-				} else {
-					td.append(span);
-					td.append(" ");
-				}
-			}
-			row.append(td);
-		}
-	}
-
+	
 	function centerSpans() {
-		for (var i = 0; i < $("#sentences").children().length - 1; i++) {
+		// Change it so ids are not neccasary.
+		for (var i = 0; i < $(".matched").length; i++) {
 			var td = $("#datatd" + i);
 			var span = $("#span" + i);
 			spanLeft = parseInt(span.position().left);
@@ -426,13 +448,29 @@ function lookFor(){
 			var spaces = $("<span></span>");
 			var spanWidth = parseInt(span.css("width"));
 			// Change this to move span over to the left. Probably use 50px - 70px
-			spaces.css("margin-right", (numOfPxs - spanWidth / 2) + "px");
+			spaces.css("margin-right", (numOfPxs - spanWidth / 2) - 65 + "px");
+			spaces.attr("data-space", (numOfPxs - spanWidth / 2) - 65 + "px");
 			td.prepend(spaces);
 		}
 	}
 
+	function showFullText() {
+		var row = $(this);
+		var tds = row.children();
+		var secondTd = $(tds[1]);
+		secondTd.css("white-space", "normal");
+		var span = $(secondTd.children()[0]);
+		span.css("margin-right", "0px");
+	}
 
-
+	function showPartialText() {
+		var row = $(this);
+		var tds = row.children();
+		var secondTd = $(tds[1]);
+		secondTd.css("white-space", "nowrap");
+		var span = $(secondTd.children()[0]);
+		span.css("margin-right", span.attr("data-space"));
+	}
 
 	
 	
