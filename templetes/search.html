@@ -41,35 +41,37 @@
 	<body>
 		<div id="frame">
 			<h1 id="header">XIGT Search</h1>
-			<div id="searcharea">
-				<!-- Language : <input id="languageinput" list="languages">
-				<datalist id="languages"></datalist> -->
-				<!-- <form action="/trieSearch" method="POST">
-				    Search For: <input type="text" name="pre">
-				    <br/>
-				    <div class = "button" >
-				    	<input type="submit">
-				    </div>
-				    
-				</form> -->
+			<div id="searcharea">		
 				<form id = "searchForm" onsubmit="event.preventDefault(); lookFor(); return false;">
-					<label for="corpus">Corpus:</label>
-				    <select id="corpus" name="corpus">
-				    </select>
-				    <label for="tiertype">Tier Type:</label>
-				    <select id="tiertype">
-				    	<option>words</option>
-				    	<option>glosses</option>
-				    	<option>morphemes</option>
-				    	<option>pos</option>
-				    	<option>phrases</option>
-				    	<option>translations</option>
-				    </select>
-				    <label for="words">Words:</label>
-				    <input id = "words" type="text" name="words">	
-				   <!--  <button type = "submit" onClick="return lookFor(this.form);"></button> -->
-				    <input type="submit" id="submit" value="Search" />   
+					<div id="firstformdiv">
+						<label for="corpus">Corpus:</label>
+					    <select id="corpus" name="corpus">
+					    </select>								
+					    <label for="tiertype">Search for:</label>
+					    <select id="tiertype">
+					    	<option>words</option>
+					    	<option>glosses</option>
+					    	<option>morphemes</option>
+					    	<option>pos</option>
+					    	<option>phrases</option>
+					    	<option>morphemes aligned to glosses</option>
+					    	<!-- <option>glosses aligned to morphemes</option> -->
+					    	<option>words aligned to morphemes</option>
+					    	<!-- <option>morphemes aligned to words</option> -->
+					    	<option>words aligned to pos</option>
+					    	<!-- <option>pos aligned to words</option> -->
+					    </select>	
+					</div>
+					<div id="secondformdiv">		
+					    <label for="words" id="firstlabel">word:</label>
+					    <input id = "words" type="text" name="words">					
+					    <label for="extratier" id="secondlabel">--:</label>
+					    <input id = "extratier" type="text" name="extratier" disabled="disabled" />						
+					   <!--  <button type = "submit" onClick="return lookFor(this.form);"></button> -->
+					    <input type="submit" id="submit" value="Search" />	
+					</div>	       
 				</form>
+
 			</div>
 			<div id="resultsarea">
 				<div id="loadingdiv">
@@ -81,14 +83,9 @@
 						
 					</p>
 				</div>
-				<!-- <div id="tablediv"> -->
 					<table id="sentences">
 						
 					</table>
-				<!-- </div> -->
-				<!-- <ul id="sentences">
-					
-				</ul> -->
 				<div id="igtdisplay">
 					<div id="igtlist">
 						
@@ -102,8 +99,6 @@
 				</div>
 			</div>
 			<div id="errors"></div>
-
-			<!-- <div id="footer"></div> -->
 		</div>
 
 	</body>

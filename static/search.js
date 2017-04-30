@@ -21,6 +21,8 @@
                 .attr("value", function(d){return d.id;});
 
                 $("#back").click(goBack);
+                $("#tiertype").change(changeLabel);
+                //sortCorpusOptions();
         });     
 	};	
 })();
@@ -28,33 +30,62 @@
 var currListItem = null;
 
 function lookFor(){
-	 	var referent = "";
-		if ($("#tiertype").val() == "words") {
-			referent =  "[referent()/@type=\"phrases\"]";
-		} else if ($("#tiertype").val() == "glosses") {
-			referent = "[referent()/@type=\"morphemes\"]";
-		} else if ($("#tiertype").val() == "pos") {
-			referent = " [referent()/@type=\"words\"]";
-		}
-
-		var entered = "";
-		if ($("#tiertype").val() == "pos") {
-			entered = $("#words").val().toUpperCase();
+		var tierType = $("#tiertype").val();
+		if (tierType.includes(" ")) {
+			var tokens = tierType.split(" ");
+			var tier1 = tokens[0];
+			var tier2 = tokens[tokens.length - 1];
+			tierType = tier1;
+			var primaryTierValue = "";
+			if ($("#extratier").val() != "") {
+				primaryTierValue = "[value()=\"" + $("#extratier").val() + "\"]";
+			}
+			var entered = "";
+			if (tier2 == "pos") {
+				entered = $("#words").val().toUpperCase();
+			} else {
+				entered = $("#words").val();
+			}
+			var ref = "";
+			/*if ((tier1 == "glosses" && tier2 == "morphemes") || (tier1 == "pos" && tier2 == "words") || 
+						(tier1 == "morphemes" && tier2 == "words")) {
+				ref = "referrer()" + primaryTierValue + "[../@type=" + tier1 + "]";
+			} else {
+				ref = "referent()[../@type=\"" + tier1 + "\"]" + primaryTierValue;
+			}*/
+			ref = "referent()[../@type=\"" + tier1 + "\"]" + primaryTierValue;
+			
+			var path = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
+			 "\"]/" + ref);
 		} else {
-			entered = $("#words").val();
+		 	var referent = "";
+			if (tierType == "words") {
+				referent =  "[referent()/@type=\"phrases\"]";
+			} else if (tierType == "glosses") {
+				referent = "[referent()/@type=\"morphemes\"]";
+			} else if (tierType == "pos") {
+				referent = " [referent()/@type=\"words\"]";
+			}
+
+			var entered = "";
+			if (tierType == "pos") {
+				entered = $("#words").val().toUpperCase();
+			} else {
+				entered = $("#words").val();
+			}
+			var path = encodeURIComponent("tier[@type=\""+  tierType  + 
+										"\"]" + referent + "/item[value()=\"" + entered + "\"]");
 		}
 
 		loadingAnimation();
 		var name = document.forms.searchForm.corpus.value;
-		var word = document.forms.searchForm.words.value;
-		d3.xhr("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + 
-					encodeURIComponent("tier[@type=\""+  $("#tiertype").val()  + 
-						"\"]" + referent + "/item[value()=\"" + entered + "\"]"))
+		
+		d3.xhr("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path)
 			.mimeType("application/json")
 			.response(function(xhr) { return JSON.parse(xhr.responseText); })
 			.get(function(error, d) {
 			    if (error) throw error;
-			    currIgts = d.igts;	  
+			    currIgts = d.igts;  
 			    d3.select("#num")
 			      .append("p")
 			      	.attr("id", "igt_count")
@@ -76,7 +107,7 @@ function lookFor(){
 				      	.text(function(d) {		     			     
 					        	return d.id;
 					     });
-				    if ($("#tiertype").val() == "phrases") {
+				    if (tierType == "phrases") {
 				    	createPhraseRows(currIgts);
 				    } else {
 				    	createRows(currIgts);
@@ -84,10 +115,17 @@ function lookFor(){
 			      	var trHeader = $("<tr></tr>");
 			      	var th1 = $("<th></th>");
 			      	var th2 = $("<th></th>");
+			      	var overflowL = $("<th></th>");
+			      	var overflowR = $("<th></th>");
+			      	var matchesPerIgt = $("<th></th>");
+			      	matchesPerIgt.html("Matches per igt");
 			      	th1.append("igt Id");
-			      	th2.append($("#tiertype").val());
+			      	th2.append(tierType);
 			      	trHeader.append(th1);
+			      	trHeader.append(overflowL);
 			      	trHeader.append(th2);
+			      	trHeader.append(overflowR);
+			      	trHeader.append(matchesPerIgt);
 			      	$("#sentences").prepend(trHeader);
 				}
 				loadResults();
@@ -281,17 +319,27 @@ function lookFor(){
 
 	function createRows(igts) {
 		var tierType = $("#tiertype").val();
+		if (tierType.includes(" ")) {
+			var tokens = tierType.split(" ");
+			tierType = tokens[0];
+		}
 		var rowIndex = 0;
 		var mainSpanIndex = 0;
+		var odd = true;
 		for (var i = 0; i < igts.length; i++) {
-			debugger;
 			var igt = igts[i];
 			var matchObject = getMatchObject(igt);
 			for (var j = 0; j < matchObject.length; j++) {
 				var row = $("<tr></tr>");
+				if (odd) {
+					row.css("background-color", "lightgray");
+				}
 				var firstTd = $("<td></td>");
 				firstTd.html(igt.id);
 				var secondTd = createRightTd(igt, tierType, rowIndex);
+				var overflowR = $("<td></td>");
+				var overflowL = $("<td></td>");
+				var matchesPerIgt = $("<td></td>");
 				if (tierType == "words" || tierType == "pos" || tierType == "glosses") {
 					var index = null;
 					if (tierType == "words" || tierType == "glosses") {
@@ -315,14 +363,20 @@ function lookFor(){
 				mainSpanIndex++;
 				rowIndex++;
 				row.append(firstTd);
+				row.append(overflowL);
 				row.append(secondTd);
+				row.append(overflowR);
+				if (j == 0) {
+					matchesPerIgt.html(matchObject.length);
+				}
+				row.append(matchesPerIgt);
 				row.click({"igt": igt}, igtClick);
 				row.mouseover(showFullText);
 				row.mouseout(showPartialText);
 				row.attr("class", "listitem" + i);
 				$("#sentences").append(row);
-
 			}
+			odd = !odd;
 		}
 
 	}
@@ -436,8 +490,10 @@ function lookFor(){
 	
 	
 	function centerSpans() {
-		// Change it so ids are not neccasary.
+		// You dont need ids. Change this
+		var rows = $("#sentences").children();
 		for (var i = 0; i < $(".matched").length; i++) {
+			var row = $(rows[i + 1]);
 			var td = $("#datatd" + i);
 			var span = $("#span" + i);
 			spanLeft = parseInt(span.position().left);
@@ -448,29 +504,88 @@ function lookFor(){
 			var spaces = $("<span></span>");
 			var spanWidth = parseInt(span.css("width"));
 			// Change this to move span over to the left. Probably use 50px - 70px
-			spaces.css("margin-right", (numOfPxs - spanWidth / 2) - 65 + "px");
-			spaces.attr("data-space", (numOfPxs - spanWidth / 2) - 65 + "px");
+			var marginPxs = (numOfPxs - spanWidth / 2) - 65;
+			spaces.css("margin-right", marginPxs + "px");
 			td.prepend(spaces);
+			var tds = row.children();
+			var overflowR = $(tds[3]);
+			var overflowL = $(tds[1]);
+
+			if (td[0].scrollWidth > td.innerWidth()) {
+				overflowR.addClass("right");
+				spaces.attr("data-space", marginPxs + "px");
+			} else if (marginPxs < 0) {
+				overflowL.addClass("left");
+				spaces.attr("data-space", marginPxs + "px");
+			}
 		}
 	}
 
 	function showFullText() {
 		var row = $(this);
 		var tds = row.children();
-		var secondTd = $(tds[1]);
-		secondTd.css("white-space", "normal");
-		var span = $(secondTd.children()[0]);
-		span.css("margin-right", "0px");
+		var secondTd = $(tds[2]);
+		var spanLeft = parseInt($(secondTd.children()[0]).attr("data-space"));
+		if (tds[2].scrollWidth > secondTd.innerWidth() || spanLeft < 0) {
+			secondTd.css("white-space", "normal");
+			var span = $(secondTd.children()[0]);
+			span.css("margin-right", "0px");
+			$(tds[1]).css("opacity", "0");
+			$(tds[3]).css("opacity", "0");
+		}
 	}
 
 	function showPartialText() {
 		var row = $(this);
 		var tds = row.children();
-		var secondTd = $(tds[1]);
+		var secondTd = $(tds[2]);
 		secondTd.css("white-space", "nowrap");
 		var span = $(secondTd.children()[0]);
 		span.css("margin-right", span.attr("data-space"));
+		$(tds[1]).css("opacity", "inherit");
+		$(tds[3]).css("opacity", "inherit");
+	}
+
+	function changeLabel() {
+		var option = $(this).val();
+		var words = option.split(" ");
+		
+		if (words.length > 1) {
+			$("#secondlabel").html(makeSingular(words[0]) + " (optional):");
+			var lastWord = makeSingular(words[words.length - 1]);
+			$("#firstlabel").html(lastWord + ":");
+			$("#extratier").prop("disabled", false);
+		} else {
+			$("#firstlabel").html(makeSingular(words[0]) + ":");
+			$("#extratier").val("");
+			$("#extratier").prop("disabled", true);
+			$("#secondlabel").html("--:");
+		}
+	}
+
+	function makeSingular(type) {
+		if (type == "words" || type == "morphemes" || type == "phrases" || type == "translations") {
+			type = type.substring(0, type.length - 1);
+		} else if (type == "glosses") {
+			type = type.substring(0, type.length - 2);
+		}
+		return type;
 	}
 
 	
-	
+	function sortCorpusOptions() {
+		var corpusSel = $("#corpus");
+		var corpusOpts = corpusSel.children();
+		var corpusArr = [];
+		for (var i = 0; i < corpus.length; i++) {
+			var text = $(corpusOpts[i]).html();
+			corpusArr.push(text);
+		}
+		corpusArr.sort();
+		corpusSel.html("");
+		for (var i = 0; i < corpusArr.length; i++) {
+			var option = $("<option></option>");
+			option.html(corpusArr[i]);
+			corpusSel.append(option);
+		}
+	}

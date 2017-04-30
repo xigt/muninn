@@ -46,11 +46,11 @@ p {
 
 #searcharea {
 	text-align: center;
-	margin-top: 120px;
+	/*margin-top: 120px;*/
 
 }
 
-#words {
+#words, #extratier {
     height: 34px;
     padding: 6px 12px;
     font-size: 14px;
@@ -59,10 +59,10 @@ p {
     background-color: #fff;
     border: 1px solid #ccc;
     border-radius: 4px;
-    margin-right: 15px;
+    /*margin-right: 15px;*/
 }
 
-#words, select {
+#words, select, #extratier {
 	box-sizing: border-box;
 }
 
@@ -78,12 +78,17 @@ select {
     border-radius: 4px;
 }
 
+#multisearch {
+	background-color: buttonface;
+}
+
 #submit {
 	background-color: #5bc0de;
 	border-color: #46b8da;
+	margin-left: 24px;
 }
 
-#submit, #back {
+#submit, #back, #multisearch {
     padding: 6px 12px;
     margin-bottom: 0;
     line-height: 1.42857143;
@@ -91,7 +96,7 @@ select {
     border-radius: 4px; 
 }
 
-#submit, #back, #sentences span {
+#submit, #back, #sentences span, #multisearch {
 	text-align: center;
     vertical-align: middle;
 }
@@ -101,7 +106,7 @@ select {
 }
 
 /
-#sentences th, #submit, #back {
+#sentences th, #submit, #back, #multisearch {
 	font-size: 14px;
     font-weight: 400;
     border: 1px solid transparent;
@@ -168,10 +173,6 @@ label {
 	max-width: 200px;
 }
 
-label[for="tiertype"], label[for="words"] {
-	margin-left: 5px;
-}
-
 #igtlist {
 	width: 20%;
 	float: left;
@@ -202,8 +203,6 @@ label[for="tiertype"], label[for="words"] {
 }
 
 #sentences {
-	/*margin-left: auto;
-	margin-right: auto;*/
 	width: 100%;
 	table-layout:fixed;
 	border-collapse: collapse;
@@ -223,11 +222,6 @@ label[for="tiertype"], label[for="words"] {
 	font-size: 17px;
     font-weight: 400;
     
-}
-
-#sentences tr:nth-child(even) {
-	background-color: lightgray;
-
 }
 
 .matched {
@@ -257,17 +251,76 @@ label[for="tiertype"], label[for="words"] {
 }
 
 #sentences td:first-child, #sentences th:first-child {
-	width: 20%;
+	width: 9%;
 }
 
 
 
-#sentences td:nth-child(2){
-	width: 70%;
+#sentences td:nth-child(3){
+	width: 80%;
+}
+
+#sentences td:nth-child(4), #sentences th:nth-child(4), #sentences td:nth-child(2), #sentences th:nth-child(2){
+	width: 2%;
+	
 }
 
 
 #sentences td {
 	overflow-x: hidden;
 }
+
+.right, .left {
+	background-size: 20px 20px;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.right {
+	background-image: url("../static/rightarrow.svg");
+}
+
+.left {
+	background-image: url("../static/leftarrow.svg");
+}
+
+#sentence tr:hover {
+	background-image: none;
+}
+
+#sentences td:nth-child(5), #sentences th:nth-child(5) {
+	width: 7%;
+	text-align: center;
+}
+
+#multibuttondiv {
+	margin-top: 10px;
+	margin-right: 10px;
+	text-align: right;
+}
+
+#extratier:disabled {
+	background-color: lightgray;
+}
+
+#firstformdiv {
+	text-align: left;
+	padding-top: 20px;
+	padding-left: 20px;
+	padding-bottom: 15px;
+	background-color: #f4f7f8
+}
+
+#secondformdiv {
+	margin-top: 50px;
+}
+
+label {
+	margin-left: 10px;
+}
+
+label[for="extratier"] {
+	margin-left: 24px;
+}
+
 
