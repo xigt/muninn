@@ -22,7 +22,7 @@
 
                 $("#back").click(goBack);
                 $("#tiertype").change(changeLabel);
-                //sortCorpusOptions();
+                sortCorpusOptions();
         });     
 	};	
 })();
@@ -47,13 +47,12 @@ function lookFor(){
 				entered = $("#words").val();
 			}
 			var ref = "";
-			/*if ((tier1 == "glosses" && tier2 == "morphemes") || (tier1 == "pos" && tier2 == "words") || 
+			if ((tier1 == "glosses" && tier2 == "morphemes") || (tier1 == "pos" && tier2 == "words") || 
 						(tier1 == "morphemes" && tier2 == "words")) {
 				ref = "referrer()" + primaryTierValue + "[../@type=" + tier1 + "]";
 			} else {
 				ref = "referent()[../@type=\"" + tier1 + "\"]" + primaryTierValue;
-			}*/
-			ref = "referent()[../@type=\"" + tier1 + "\"]" + primaryTierValue;
+			}
 			
 			var path = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
 			 "\"]/" + ref);
@@ -85,7 +84,7 @@ function lookFor(){
 			.response(function(xhr) { return JSON.parse(xhr.responseText); })
 			.get(function(error, d) {
 			    if (error) throw error;
-			    currIgts = d.igts;  
+			    currIgts = d.igts; 
 			    d3.select("#num")
 			      .append("p")
 			      	.attr("id", "igt_count")
@@ -413,6 +412,7 @@ function lookFor(){
 
 	function highlightMatchMorphemes(td, matchObject, morphemeTier, idIndex, mainMatchIndex) {
 		var spans = td.children();
+		var lastWordNum = null;
 			for (var j = 0; j < matchObject.length; j++) {
 				var matchedItemId = matchObject[j].attributes.item
 				var item = idMatcher(morphemeTier.items, matchedItemId);
@@ -437,19 +437,52 @@ function lookFor(){
 				} else {
 					span.addClass("othermatch");
 				}
-				if (!whole) {
-					var range = getSpan(segment);
-					var firstPart = word.substring(0, range[0])
-					spanContainingMorpheme.append(firstPart);
-					var middle = word.substring(range[0], range[1]);
-					span.html(middle);
-					spanContainingMorpheme.append(span);
-					var last = word.substring(range[1]);
-					spanContainingMorpheme.append(last);
+				if (wordNumber != lastWordNum) {
+					if (!whole) {
+						var range = getSpan(segment);
+						var firstPart = word.substring(0, range[0])
+						spanContainingMorpheme.append(firstPart);
+						var middle = word.substring(range[0], range[1]);
+						span.html(middle);
+						spanContainingMorpheme.append(span);
+						var last = word.substring(range[1]);
+						spanContainingMorpheme.append(last);
+					} else {
+						span.html(word);
+						spanContainingMorpheme.append(span);
+					}
 				} else {
-					span.html(word);
-					spanContainingMorpheme.append(span);
-				}	
+					splitStr = word.split(/(<span[^>]+>|<\/span>)/g);
+					var range = getSpan(segment);
+					var previousMaxIndex = -1;
+					for (var k = 0; k < splitStr.length; k++) {
+						var part = splitStr[k];
+						if (k % 2 == 0) {
+							var currMaxIndex = previousMaxIndex + part.length;
+							if (range[1] - 1 <= currMaxIndex && range[0] > previousMaxIndex) {
+								var diff = previousMaxIndex + 1;
+								var first = part.substring(0, range[0] - diff);
+								var middle = part.substring(range[0] - diff, range[1] - diff);
+								span.html(middle);
+								var last = part.substring(range[1] - diff);
+								spanContainingMorpheme.append(first);
+								spanContainingMorpheme.append(span);
+								spanContainingMorpheme.append(last);
+							} else {
+								spanContainingMorpheme.append(part);
+							}
+							previousMaxIndex = currMaxIndex;
+						} else {
+							var previousMatchSpan = $(part + "</span>");
+							previousMatchSpan.html(splitStr[k + 1]);
+							spanContainingMorpheme.append(previousMatchSpan);
+							previousMaxIndex = previousMaxIndex + splitStr[k + 1].length;
+							k = k + 2;							
+						}
+						
+					}
+				}
+				lastWordNum = wordNumber;
 
 			}
 	}
@@ -549,7 +582,8 @@ function lookFor(){
 	function changeLabel() {
 		var option = $(this).val();
 		var words = option.split(" ");
-		
+		$("#extratier").val("");
+		$("#words").val("");
 		if (words.length > 1) {
 			$("#secondlabel").html(makeSingular(words[0]) + " (optional):");
 			var lastWord = makeSingular(words[words.length - 1]);
@@ -557,7 +591,6 @@ function lookFor(){
 			$("#extratier").prop("disabled", false);
 		} else {
 			$("#firstlabel").html(makeSingular(words[0]) + ":");
-			$("#extratier").val("");
 			$("#extratier").prop("disabled", true);
 			$("#secondlabel").html("--:");
 		}
@@ -576,16 +609,21 @@ function lookFor(){
 	function sortCorpusOptions() {
 		var corpusSel = $("#corpus");
 		var corpusOpts = corpusSel.children();
-		var corpusArr = [];
+		var corpusHtmlArr = [];
+		var corpusIdToHtml = {};
 		for (var i = 0; i < corpus.length; i++) {
-			var text = $(corpusOpts[i]).html();
-			corpusArr.push(text);
+			var option = $(corpusOpts[i]);
+			var text = option.html();
+			var id = option.val();
+			corpusHtmlArr.push(text);
+			corpusIdToHtml[text] = id;
 		}
-		corpusArr.sort();
+		corpusHtmlArr.sort();
 		corpusSel.html("");
-		for (var i = 0; i < corpusArr.length; i++) {
+		for (var i = 0; i < corpusHtmlArr.length; i++) {
 			var option = $("<option></option>");
-			option.html(corpusArr[i]);
+			option.html(corpusHtmlArr[i]);
+			option.val(corpusIdToHtml[corpusHtmlArr[i]]);
 			corpusSel.append(option);
 		}
 	}
