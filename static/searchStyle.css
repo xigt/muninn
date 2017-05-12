@@ -50,7 +50,7 @@ p {
 
 }
 
-#words, #extratier {
+input[type=text] {
     height: 34px;
     padding: 6px 12px;
     font-size: 14px;
@@ -62,7 +62,7 @@ p {
     /*margin-right: 15px;*/
 }
 
-#words, select, #extratier {
+input[type=text], select {
 	box-sizing: border-box;
 }
 
@@ -82,13 +82,13 @@ select {
 	background-color: buttonface;
 }
 
-#submit {
+#submit, .refinebutton {
 	background-color: #5bc0de;
 	border-color: #46b8da;
 	margin-left: 24px;
 }
 
-#submit, #back, #multisearch {
+#submit, #back, #multisearch, .refinebutton, #revertbutton, #refinebutton0 {
     padding: 6px 12px;
     margin-bottom: 0;
     line-height: 1.42857143;
@@ -96,17 +96,17 @@ select {
     border-radius: 4px; 
 }
 
-#submit, #back, #sentences span, #multisearch {
+#submit, #back, #sentences span, #multisearch, .refinebutton, #revertbutton, #refinebutton0 {
 	text-align: center;
     vertical-align: middle;
 }
 
-#submit, #back {
+#submit, #back, .refinebutton {
 	color: #fff;
 }
 
 /
-#sentences th, #submit, #back, #multisearch {
+#sentences th, #submit, #back, #multisearch, .refinebutton {
 	font-size: 14px;
     font-weight: 400;
     border: 1px solid transparent;
@@ -299,7 +299,7 @@ label {
 	text-align: right;
 }
 
-#extratier:disabled {
+#extratier:disabled, .refinebuttoncontainer input:disabled {
 	background-color: lightgray;
 }
 
@@ -322,5 +322,30 @@ label {
 label[for="extratier"] {
 	margin-left: 24px;
 }
+
+#refinebutton0 {
+	margin-top: 15px;
+	background-color: white;
+	color: black;
+}
+
+.refinebuttoncontainer {
+	text-align: center;
+	margin-bottom: 15px;
+	display: none;
+}
+
+.refinebuttoncontainer label {
+	margin-right: 5px;
+}
+
+#revertdiv {
+	text-align: right;
+}
+
+#revertbutton {
+	margin-right: 10px;
+}
+
 
 

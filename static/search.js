@@ -23,28 +23,48 @@
                 $("#back").click(goBack);
                 $("#tiertype").change(changeLabel);
                 sortCorpusOptions();
+                $("#revertbutton").click(previousResults);
         });     
 	};	
 })();
 
 var currListItem = null;
+var currIgtIds = [];
+var savedResultsData = [];
 
-function lookFor(){
-		var tierType = $("#tiertype").val();
+function lookFor() {
+	loadingAnimation();
+	lookForHelper();
+
+}
+//creates query, starts laoding animation
+function lookForHelper(input1, input2, tierType, idParameter){
+		var tier1 = null;
+		var tier2 = null;
+		var path2 = null;
+		if (idParameter == undefined) {
+			idParameter = "";
+		}
+		if (input1 == undefined || input2 == undefined) {
+			input1 = $("#words");
+			input2 = $("#extratier");
+			tierType = $("#tiertype").val();
+		} 
+		//Factor this if and else statement.
 		if (tierType.includes(" ")) {
 			var tokens = tierType.split(" ");
 			var tier1 = tokens[0];
 			var tier2 = tokens[tokens.length - 1];
 			tierType = tier1;
 			var primaryTierValue = "";
-			if ($("#extratier").val() != "") {
-				primaryTierValue = "[value()=\"" + $("#extratier").val() + "\"]";
+			if (input2.val() != "") {
+				primaryTierValue = "[value()=\"" + input2.val() + "\"]";
 			}
 			var entered = "";
 			if (tier2 == "pos") {
-				entered = $("#words").val().toUpperCase();
+				entered = input1.val().toUpperCase();
 			} else {
-				entered = $("#words").val();
+				entered = input1.val();
 			}
 			var ref = "";
 			if ((tier1 == "glosses" && tier2 == "morphemes") || (tier1 == "pos" && tier2 == "words") || 
@@ -55,7 +75,12 @@ function lookFor(){
 			}
 			
 			var path = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
-			 "\"]/" + ref);
+			 		"\"]/" + ref) + idParameter;
+			if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
+					(tier1 == "words" && tier2 == "morphemes"))) {
+	    		var path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
+			 		"\"]/" + ref + "/(. | referrer()[../@type=\"" + tier2 + "\"])") + idParameter;
+	    	}
 		} else {
 		 	var referent = "";
 			if (tierType == "words") {
@@ -68,80 +93,210 @@ function lookFor(){
 
 			var entered = "";
 			if (tierType == "pos") {
-				entered = $("#words").val().toUpperCase();
+				entered = input1.val().toUpperCase();
 			} else {
-				entered = $("#words").val();
+				entered = input1.val();
 			}
 			var path = encodeURIComponent("tier[@type=\""+  tierType  + 
-										"\"]" + referent + "/item[value()=\"" + entered + "\"]");
+										"\"]" + referent + "/item[value()=\"" + entered + "\"]") + idParameter;
 		}
 
-		loadingAnimation();
+		/*loadingAnimation();*/
 		var name = document.forms.searchForm.corpus.value;
-		
-		d3.xhr("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path)
-			.mimeType("application/json")
-			.response(function(xhr) { return JSON.parse(xhr.responseText); })
-			.get(function(error, d) {
-			    if (error) throw error;
-			    currIgts = d.igts; 
-			    d3.select("#num")
-			      .append("p")
-			      	.attr("id", "igt_count")
-			        .text(function() {
-			            return "Number of igts found: " + d.igt_count;
-			     	});
-			    if (d.igt_count > 0) {
-				    d3.select("#igt_id")
-				      .selectAll("li")
-				      .data(d.igts)
-				      .enter()
-				      .append("li")
-				      	.on("click", function(d){
-				      		d3.select("#igt").html("");
-				      		igtLayout("#igt", d);
-				      		igtSelected(this);
-				      		lengthen();			  
-				      	})
-				      	.text(function(d) {		     			     
-					        	return d.id;
-					     });
-				    if (tierType == "phrases") {
-				    	createPhraseRows(currIgts);
-				    } else {
-				    	createRows(currIgts);
-				    }
-			      	var trHeader = $("<tr></tr>");
-			      	var th1 = $("<th></th>");
-			      	var th2 = $("<th></th>");
-			      	var overflowL = $("<th></th>");
-			      	var overflowR = $("<th></th>");
-			      	var matchesPerIgt = $("<th></th>");
-			      	matchesPerIgt.html("Matches per igt");
-			      	th1.append("igt Id");
-			      	th2.append(tierType);
-			      	trHeader.append(th1);
-			      	trHeader.append(overflowL);
-			      	trHeader.append(th2);
-			      	trHeader.append(overflowR);
-			      	trHeader.append(matchesPerIgt);
-			      	$("#sentences").prepend(trHeader);
+		if (path2 != null) {
+			$.when($.ajax("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path),
+					$.ajax("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path2)).done(function(a, b) {
+					var d = a[0];
+					var igts2 = b[0].igts;
+					getData(d, tierType, tier1, tier2, igts2);
+			});
+		} else {
+			$.ajax({
+				url: "http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path,
+				success: function(result) {
+					getData(result, tierType, tier1, tier2);
 				}
-				loadResults();
-				centerSpans();
-			    
-			
-    		});
+			});
+		}
+		
+		
     		return false;
     	// igtLayout("#igt", xigtJsonData);
 	}
 
+	var refineLevel = 0;
+
+	function addExtraSearchDiv(){
+		refineLevel++;
+		var select = $("<select></select>");
+		var options = $("#tiertype option").clone();
+		select.append(options);
+		select.attr("id", "tiertype" + refineLevel);
+		select.change(changeLabel);
+
+		var div = $("<div></div>");
+		var input1 = $("<input/>").attr("type", "text");
+		input1.attr("id", "words" + refineLevel);
+		var input2 = $("<input/>").attr("type", "text");
+		input2.attr("id", "extratier" + refineLevel);
+		input2.prop("disabled", true);
+		var input3 = $("<input/>").attr("type", "button");
+		input3.addClass("refinebutton");
+		input3.click(refineSearch);
+		input3.val("Search")
+		var selLabel = $("<label></label>");
+		var label1 = $("<label></label>");
+		var label2 = $("<label></label>");
+		label1.html("word:");
+		label2.html("--:");
+		selLabel.html("Search for:");
+		label1.prop("for", "words" + refineLevel);
+		label2.prop("for", "extratier" + refineLevel);
+		selLabel.prop("for", "tiertype" + refineLevel);
+		div.append(selLabel);
+		div.append(select);
+		div.append(label1);
+		div.append(input1);
+		div.append(label2);
+		div.append(input2);
+		div.append(input3);
+		div.css("margin-top", "50px");
+		$(this).after(div);
+		$(this).val("Hide");
+		
+		$(this).click(hideExtraSearchDiv);
+		$(this).unbind("click", addExtraSearchDiv);
+	}
+
+	function hideExtraSearchDiv() {
+		$(this).val("Search in found igts");
+		var children = $(".refinebuttoncontainer").children();
+		if (children[2] != undefined) {
+			$(children[2]).remove();
+		}
+		$(this).unbind("click");
+		$(this).click(addExtraSearchDiv);
+	}
+
+	function refineSearch() {
+		var children = $(this).parent().children();
+		var idParameter = "&id=";
+		for (var i = 0; i < currIgtIds.length; i++) {
+			if (i != currIgtIds.length - 1) {
+				idParameter = idParameter + currIgtIds[i] + ",";
+			} else {
+				idParameter = idParameter + currIgtIds[i];
+			}
+		}
+		refineLoadingAnimation();
+		lookForHelper($(children[3]), $(children[5]), $(children[1]).val(), idParameter);
+	}
+
+	function getData(d, tierType, tier1, tier2, igts2, reverting) {
+		if (!reverting) {
+			var resultData = [d, tierType, tier1, tier2, igts2];
+			savedResultsData.push(resultData);
+		}
+		currIgts = d.igts; 
+	    d3.select("#num")
+	      .append("p")
+	      	.attr("id", "igt_count")
+	        .text(function() {
+	            return "Number of igts found: " + d.igt_count;
+	     	});
+	    if (d.igt_count > 0) {
+	    	$(".refinebuttoncontainer").show();
+			setUpIgtList(d);
+		    if (tierType == "phrases") {
+		    	createPhraseRows(currIgts);
+		    } else {
+		    	if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
+				(tier1 == "words" && tier2 == "morphemes"))) {
+		    		createRows(currIgts,tierType, igts2, tier2);
+		    	} else {
+		    		createRows(currIgts, tierType);
+		    	}
+		    }
+	      	var trHeader = $("<tr></tr>");
+	      	var th1 = $("<th></th>");
+	      	var th2 = $("<th></th>");
+	      	var overflowL = $("<th></th>");
+	      	var overflowR = $("<th></th>");
+	      	var matchesPerIgt = $("<th></th>");
+	      	matchesPerIgt.html("Matches per igt");
+	      	th1.append("igt Id");
+	      	th2.append(tierType);
+	      	trHeader.append(th1);
+	      	trHeader.append(overflowL);
+	      	trHeader.append(th2);
+	      	trHeader.append(overflowR);
+	      	trHeader.append(matchesPerIgt);
+	      	// Change here
+	      	$("#sentences").prepend(trHeader);
+		}
+		loadResults();
+		centerSpans();
+	}
+
+	function setUpIgtList(d) {
+		currIgtIds = [];
+		d3.select("#igt_id")
+	      .selectAll("li")
+	      .data(d.igts)
+	      .enter()
+	      .append("li")
+	      	.on("click", function(d){
+	      		d3.select("#igt").html("");
+	      		igtLayout("#igt", d);
+	      		igtSelected(this);
+	      		lengthen();			  
+	      	})
+	      	.text(function(d) {
+	      			currIgtIds.push(d.id);
+		        	return d.id;
+		     });
+	}
+
+	function previousResults() {
+		var length = savedResultsData.length;
+		if (length > 1) {
+			refineLoadingAnimation();
+			var lastSaved = savedResultsData[length - 2];
+			savedResultsData.pop();
+			getData( lastSaved[0], lastSaved[1], lastSaved[2], lastSaved[3], lastSaved[4], true)
+		}
+
+	}
+
 	function loadingAnimation() {
+		savedResultsData = [];
+		d3.select("#num").selectAll("p").remove();
+		d3.select("#igt_id").selectAll("li").remove();
+		d3.select("#sentences").selectAll("tr").remove();
+
+		var button = $("#refinebutton0");
+		$(button).val("Search in found igts");
+		button.unbind("click", hideExtraSearchDiv);
+		button.click(addExtraSearchDiv);
+
+		$(".refinebuttoncontainer").hide();
+		var children = $(".refinebuttoncontainer").children();
+		if (children[2] != undefined) {
+			$(children[2]).remove();
+		}
+		$("#igt").html("");
+		$("#num").hide();
+		$("#sentences").hide();
+		$("#igtdisplay").hide();
+		$("#back").hide();
+		$("#loadingicon").show();
+	}
+
+	function refineLoadingAnimation() {
 		d3.select("#num").selectAll("p").remove();
 		d3.select("#igt_id").selectAll("li").remove();
 		d3.select("#sentences").selectAll("tr").remove();
 		$("#igt").html("");
-		$("#num").hide();
 		$("#sentences").hide();
 		$("#igtdisplay").hide();
 		$("#back").hide();
@@ -161,7 +316,216 @@ function lookFor(){
 	    }
 	}
 
-	function igtSelected(liTag) {
+	function createRows(igts, tierType, igts2, tier2) {
+		if (tierType.includes(" ")) {
+			var tokens = tierType.split(" ");
+			tierType = tokens[0];
+		}
+		var alignments = null;
+		if (igts2 != undefined) {
+			alignments = getAlignments(igts2, tier2);
+		}
+		var rowIndex = 0;
+		var mainSpanIndex = 0;
+		var odd = true;
+		for (var i = 0; i < igts.length; i++) {
+			var igt = igts[i];
+			var matchObject = getMatchObject(igt);
+			for (var j = 0; j < matchObject.length; j++) {
+				var row = $("<tr></tr>");
+				if (odd) {
+					row.css("background-color", "lightgray");
+				}
+				var firstTd = $("<td></td>");
+				firstTd.html(igt.id);
+				var secondTd = createRightTd(igt, tierType, rowIndex);
+				var overflowR = $("<td></td>");
+				var overflowL = $("<td></td>");
+				var matchesPerIgt = $("<td></td>");
+				if (tierType == "words" || tierType == "pos" || tierType == "glosses") {
+					var matchedItemNumbers = getMatchedItemNumbers(matchObject, tierType);
+					var div = $(secondTd.children()[0]);
+					highlightMatch(div, j, matchedItemNumbers, mainSpanIndex);
+				} else {
+					var morphemeTier = idMatcher(igt.tiers, matchObject[0].attributes.tier);
+					var div = $(secondTd.children()[0]);
+					highlightMatchMorphemes(div, matchObject, morphemeTier, mainSpanIndex, j);
+				}
+				if (alignments != null) {
+					addSecondTier(secondTd, alignments[i][j]);
+				}
+				mainSpanIndex++;
+				rowIndex++;
+				row.append(firstTd);
+				row.append(overflowL);
+				row.append(secondTd);
+				row.append(overflowR);
+				if (j == 0) {
+					matchesPerIgt.html(matchObject.length);
+				}
+				row.append(matchesPerIgt);
+				row.click({"igt": igt}, igtClick);
+				row.mouseover(showFullText);
+				row.mouseout(showPartialText);
+				row.attr("class", "listitem" + i);
+				$("#sentences").append(row);
+			}
+			odd = !odd;
+		}
+
+	}
+
+	function getAlignments(igts, tier2) {
+		var results = [];
+		for (var i = 0; i < igts.length; i++) {
+			var igt = igts[i];
+			var matchObject = getMatchObject(igt);
+			var tokens = null;
+			if (tier2 == "glosses") {
+				tokens = getGlosses(igt);
+			} else if (tier2 == "morphemes") {
+				tokens = getMorphemes(igt);
+			} else if (tier2 == "pos") {
+				tokens = getPos(igt);
+			} else if (tier2 == "words") {
+				tokens = getWords(igt);
+			}
+			var nonMatchTierId = matchObject[0].attributes.tier;
+			var newMatchObject = [];
+			var groupings = [];
+			var groupingsCount = 0;
+			for (var j = 1; j < matchObject.length; j++) {
+				if (matchObject[j].attributes.tier != nonMatchTierId) {
+					newMatchObject.push(matchObject[j]);
+					groupingsCount++;
+				} else {
+					groupings.push(groupingsCount);
+					groupingsCount = 0;
+				}
+			}
+			groupings.push(groupingsCount);
+			var matchedItemNumbers = getMatchedItemNumbers(newMatchObject, tier2);
+			var igtRow = [];
+			for (var j = 0; j < groupings.length; j++) {
+				var matchAlginments = [];
+				var groupLength = groupings[j];
+				for (var k = 0; k < groupLength; k++) {
+					var number = matchedItemNumbers[k];
+					var token = tokens[number - 1];
+					matchAlginments.push(token);
+				}
+				igtRow.push(matchAlginments);
+				for (var k = 0; k < groupLength; k++) {
+					matchedItemNumbers.shift();
+				}
+			}
+			results.push(igtRow);
+		}
+		return results;
+	}
+
+	function getMatchedItemNumbers(matchObject, tierType) {
+		var index = null;
+		if (tierType == "words" || tierType == "glosses" || tierType == "morphemes") {
+      		index = 1;
+      	} else {  //pos
+      		index = 5;
+      	}  
+		var matchedItemNumbers = [];
+		for (var i = 0; i < matchObject.length; i++) {
+			var matchedItemId = matchObject[i].attributes.item
+			var matchedItemNumber = parseInt(matchedItemId.substring(index));
+			matchedItemNumbers.push(matchedItemNumber);
+		}
+		return matchedItemNumbers;
+	}
+
+	function changeLabel() {
+		var firstLabel;
+		var secondLabel;
+		var firstInput;
+		var secondInput;
+		var sel = $(this);
+		if (sel.attr("id") == "tiertype") {
+			firstLabel = $("#firstlabel");
+			secondLabel = $("#secondlabel");
+			firstInput = $("#words");
+			secondInput = $("#extratier");
+		} else {
+			var div = sel.parent();
+			var children = div.children();
+			firstLabel = $(children[2]);
+			secondLabel = $(children[4]);
+			firstInput = $(children[3]);
+			secondInput = $(children[5]);
+		}
+		var option = sel.val();
+		var words = option.split(" ");
+		secondInput.val("");
+		firstInput.val("");
+		if (words.length > 1) {
+			secondLabel.html(makeSingular(words[0]) + " (optional):");
+			var lastWord = makeSingular(words[words.length - 1]);
+			firstLabel.html(lastWord + ":");
+			secondInput.prop("disabled", false);
+		} else {
+			firstLabel.html(makeSingular(words[0]) + ":");
+			secondInput.prop("disabled", true);
+			secondLabel.html("--:");
+		}
+	}
+
+
+
+	function makeSingular(type) {
+		if (type == "words" || type == "morphemes" || type == "phrases" || type == "translations") {
+			type = type.substring(0, type.length - 1);
+		} else if (type == "glosses") {
+			type = type.substring(0, type.length - 2);
+		}
+		return type;
+	}
+
+	
+	function sortCorpusOptions() {
+		var corpusSel = $("#corpus");
+		var corpusOpts = corpusSel.children();
+		var corpusHtmlArr = [];
+		var corpusIdToHtml = {};
+		for (var i = 0; i < corpus.length; i++) {
+			var option = $(corpusOpts[i]);
+			var text = option.html();
+			var id = option.val();
+			corpusHtmlArr.push(text);
+			corpusIdToHtml[text] = id;
+		}
+		corpusHtmlArr.sort();
+		corpusSel.html("");
+		for (var i = 0; i < corpusHtmlArr.length; i++) {
+			var option = $("<option></option>");
+			option.html(corpusHtmlArr[i]);
+			option.val(corpusIdToHtml[corpusHtmlArr[i]]);
+			corpusSel.append(option);
+		}
+	}
+
+	function addSecondTier(td, matchedTokens) {
+		var div = $("<div></div>");
+		var parentSpan = $("<span></span>");
+		for (var i = 0; i < matchedTokens.length; i++) {
+			var span = $("<span></span>");
+			span.addClass("matched");
+			span.css("margin-right", "2px");
+			span.html(matchedTokens[i]);
+			parentSpan.append(span);
+		}
+		div.append(parentSpan);
+		td.append(div);
+	}
+
+	// third cut and paste
+
+		function igtSelected(liTag) {
 		if (currListItem != null) {
 			$("#" + currListItem).removeClass("selected");
 		}
@@ -316,70 +680,6 @@ function lookFor(){
 		return matchObject;
 	}
 
-	function createRows(igts) {
-		var tierType = $("#tiertype").val();
-		if (tierType.includes(" ")) {
-			var tokens = tierType.split(" ");
-			tierType = tokens[0];
-		}
-		var rowIndex = 0;
-		var mainSpanIndex = 0;
-		var odd = true;
-		for (var i = 0; i < igts.length; i++) {
-			var igt = igts[i];
-			var matchObject = getMatchObject(igt);
-			for (var j = 0; j < matchObject.length; j++) {
-				var row = $("<tr></tr>");
-				if (odd) {
-					row.css("background-color", "lightgray");
-				}
-				var firstTd = $("<td></td>");
-				firstTd.html(igt.id);
-				var secondTd = createRightTd(igt, tierType, rowIndex);
-				var overflowR = $("<td></td>");
-				var overflowL = $("<td></td>");
-				var matchesPerIgt = $("<td></td>");
-				if (tierType == "words" || tierType == "pos" || tierType == "glosses") {
-					var index = null;
-					if (tierType == "words" || tierType == "glosses") {
-			      		index = 1;
-			      	} else {
-			      		index = 5;
-			      	} 
-			      	// Make this more efficent since sometimes an igt has more than one match
-			      	// and this is calculated multiple times. 
-					var matchedItemNumbers = [];
-					for (var k = 0; k < matchObject.length; k++) {
-						var matchedItemId = matchObject[k].attributes.item
-						var matchedItemNumber = parseInt(matchedItemId.substring(index));
-						matchedItemNumbers.push(matchedItemNumber);
-					}
-					highlightMatch(secondTd, j, matchedItemNumbers, mainSpanIndex);
-				} else {
-					var morphemeTier = idMatcher(igt.tiers, matchObject[0].attributes.tier);
-					highlightMatchMorphemes(secondTd, matchObject, morphemeTier, mainSpanIndex, j);
-				}
-				mainSpanIndex++;
-				rowIndex++;
-				row.append(firstTd);
-				row.append(overflowL);
-				row.append(secondTd);
-				row.append(overflowR);
-				if (j == 0) {
-					matchesPerIgt.html(matchObject.length);
-				}
-				row.append(matchesPerIgt);
-				row.click({"igt": igt}, igtClick);
-				row.mouseover(showFullText);
-				row.mouseout(showPartialText);
-				row.attr("class", "listitem" + i);
-				$("#sentences").append(row);
-			}
-			odd = !odd;
-		}
-
-	}
-
 	function igtClick(event) {
 		d3.select("#igt").html("");
   		igtLayout("#igt", event.data.igt);
@@ -410,8 +710,8 @@ function lookFor(){
 		}
 	}
 
-	function highlightMatchMorphemes(td, matchObject, morphemeTier, idIndex, mainMatchIndex) {
-		var spans = td.children();
+	function highlightMatchMorphemes(div, matchObject, morphemeTier, idIndex, mainMatchIndex) {
+		var spans = div.children();
 		var lastWordNum = null;
 			for (var j = 0; j < matchObject.length; j++) {
 				var matchedItemId = matchObject[j].attributes.item
@@ -495,18 +795,22 @@ function lookFor(){
 			items = getGlosses(igt);
 		}
 		var td = $("<td></td>");
-		td.attr("id", "datatd" + idIndex);
+
+		var div = $("<div></div>");
+		div.attr("id", "datatd" + idIndex);
+		td.append(div);
+		//td.attr("id", "datatd" + idIndex);
 		for (var i = 0; i < items.length; i++) {
 			var span = $("<span></span>");
 			span.html(items[i]);
-			td.append(span);
-			td.append(" ");
+			div.append(span);
+			div.append(" ");
 		}
 		return td;
 	}
 
-	function highlightMatch(td, mainMatchIndex, matchedItemNumbers, idIndex) {
-		var spans = td.children();
+	function highlightMatch(div, mainMatchIndex, matchedItemNumbers, idIndex) {
+		var spans = div.children();
 		for (var j = 0; j < matchedItemNumbers.length; j++) {
 			var position = matchedItemNumbers[j] - 1;
 			var matchedSpan = $(spans[position]);
@@ -524,30 +828,43 @@ function lookFor(){
 	
 	function centerSpans() {
 		// You dont need ids. Change this
+		// Also td has been changed to a div now.
 		var rows = $("#sentences").children();
-		for (var i = 0; i < $(".matched").length; i++) {
+		for (var i = 0; i < rows.length - 1; i++) {
+
 			var row = $(rows[i + 1]);
-			var td = $("#datatd" + i);
+			var div = $("#datatd" + i);
 			var span = $("#span" + i);
 			spanLeft = parseInt(span.position().left);
-			tdLeft = parseInt(td.position().left);
-			spanFromEdge = spanLeft - (tdLeft + 8);
-			middle = (parseInt(td.css("width")) - 16) / 2;
+			divLeft = parseInt(div.position().left);
+			spanFromEdge = spanLeft - (divLeft + 8);
+			middle = (parseInt(div.css("width")) - 16) / 2;
 			numOfPxs = middle - spanFromEdge;
 			var spaces = $("<span></span>");
 			var spanWidth = parseInt(span.css("width"));
 			// Change this to move span over to the left. Probably use 50px - 70px
 			var marginPxs = (numOfPxs - spanWidth / 2) - 65;
 			spaces.css("margin-right", marginPxs + "px");
-			td.prepend(spaces);
+			div.prepend(spaces);
 			var tds = row.children();
+			var mainTd = $(tds[2]);
+			var mainTdDivs = mainTd.children();
+			if (mainTdDivs.length > 1) {
+				var extraDiv = $(mainTdDivs[1]);
+				var child = $(extraDiv.children()[0]);
+				var spaceSpan = $("<span></span>");
+				extraDiv.prepend(spaceSpan);
+				spaceSpan.css("margin-right", (spanFromEdge + marginPxs) + 8 + "px");
+			}
+			
 			var overflowR = $(tds[3]);
 			var overflowL = $(tds[1]);
 
-			if (td[0].scrollWidth > td.innerWidth()) {
+			if (div[0].scrollWidth > div.innerWidth()) {
 				overflowR.addClass("right");
 				spaces.attr("data-space", marginPxs + "px");
-			} else if (marginPxs < 0) {
+			} 
+			if (marginPxs < 0) {
 				overflowL.addClass("left");
 				spaces.attr("data-space", marginPxs + "px");
 			}
@@ -558,10 +875,11 @@ function lookFor(){
 		var row = $(this);
 		var tds = row.children();
 		var secondTd = $(tds[2]);
-		var spanLeft = parseInt($(secondTd.children()[0]).attr("data-space"));
-		if (tds[2].scrollWidth > secondTd.innerWidth() || spanLeft < 0) {
-			secondTd.css("white-space", "normal");
-			var span = $(secondTd.children()[0]);
+		var div = $(secondTd.children()[0]);
+		var spanLeft = parseInt($(div.children()[0]).attr("data-space"));
+		if (div[0].scrollWidth > div.innerWidth() || spanLeft < 0) {
+			div.css("white-space", "normal");
+			var span = $(div.children()[0]);
 			span.css("margin-right", "0px");
 			$(tds[1]).css("opacity", "0");
 			$(tds[3]).css("opacity", "0");
@@ -572,58 +890,60 @@ function lookFor(){
 		var row = $(this);
 		var tds = row.children();
 		var secondTd = $(tds[2]);
-		secondTd.css("white-space", "nowrap");
-		var span = $(secondTd.children()[0]);
+		var div = $(secondTd.children()[0]);
+		div.css("white-space", "nowrap");
+		var span = $(div.children()[0]);
 		span.css("margin-right", span.attr("data-space"));
 		$(tds[1]).css("opacity", "inherit");
 		$(tds[3]).css("opacity", "inherit");
 	}
 
-	function changeLabel() {
-		var option = $(this).val();
-		var words = option.split(" ");
-		$("#extratier").val("");
-		$("#words").val("");
-		if (words.length > 1) {
-			$("#secondlabel").html(makeSingular(words[0]) + " (optional):");
-			var lastWord = makeSingular(words[words.length - 1]);
-			$("#firstlabel").html(lastWord + ":");
-			$("#extratier").prop("disabled", false);
-		} else {
-			$("#firstlabel").html(makeSingular(words[0]) + ":");
-			$("#extratier").prop("disabled", true);
-			$("#secondlabel").html("--:");
+	//third
+	function getPos(igt) {
+		var tiers = igt.tiers;
+		var posTier = findTier(tiers, "pos", "w-pos");
+		if (posTier == null) {
+			posTier = findTier(tiers, "pos", "gw-pos");
 		}
+		var items = posTier.items;
+		var poses = [];
+		for (var i = 0; i < items.length; i++) {
+			poses.push(items[i].text);
+		}
+		return poses;
 	}
 
-	function makeSingular(type) {
-		if (type == "words" || type == "morphemes" || type == "phrases" || type == "translations") {
-			type = type.substring(0, type.length - 1);
-		} else if (type == "glosses") {
-			type = type.substring(0, type.length - 2);
+	function getMorphemes(igt) {
+		var words = getWords(igt);
+		var multiDimArr = [];
+		/*for (var i = 0; i < words.length; i++) {
+			var newArr = [];
+			var spaceArray = [];
+			spaceArray.push(" ");
+			multiDimArr.push(newArr);
+			multiDimArr.push(spaceArray);
+		}*/
+		var tiers = igt.tiers;
+		var morphemeTier = idMatcher(tiers, "m");
+		var items = morphemeTier.items;
+		// Factor this code out.
+		//var morphemes = [];
+		for (var i = 0; i < items.length; i++) {
+			var segment = items[i].attributes.segmentation;
+			if (!segment.includes("[")) {
+				wordNumber = parseInt(segment.substring(1));
+				var morpheme = words[wordNumber - 1];
+				multiDimArr.push(morpheme);
+				//morphemes.push(words[wordNumber - 1]);
+			} else {
+				var index = segment.indexOf("[");
+				var wordNumber = parseInt(segment.substring(1, index));
+				var span = getSpan(segment);
+				var morpheme = words[wordNumber - 1].substring(span[0], span[1]);
+				multiDimArr.push(morpheme);
+				//morphemes.push(words[wordNumber - 1].substring(span[0], span[1]));
+			}
 		}
-		return type;
-	}
-
-	
-	function sortCorpusOptions() {
-		var corpusSel = $("#corpus");
-		var corpusOpts = corpusSel.children();
-		var corpusHtmlArr = [];
-		var corpusIdToHtml = {};
-		for (var i = 0; i < corpus.length; i++) {
-			var option = $(corpusOpts[i]);
-			var text = option.html();
-			var id = option.val();
-			corpusHtmlArr.push(text);
-			corpusIdToHtml[text] = id;
-		}
-		corpusHtmlArr.sort();
-		corpusSel.html("");
-		for (var i = 0; i < corpusHtmlArr.length; i++) {
-			var option = $("<option></option>");
-			option.html(corpusHtmlArr[i]);
-			option.val(corpusIdToHtml[corpusHtmlArr[i]]);
-			corpusSel.append(option);
-		}
+		//return morphemes;
+		return multiDimArr;
 	}
