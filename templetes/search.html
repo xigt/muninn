@@ -47,45 +47,38 @@
 						<label for="corpus">Corpus:</label>
 					    <select id="corpus" name="corpus">
 					    </select>								
-					    <label for="tiertype">Search for:</label>
-					    <select id="tiertype">
-					    	<option>words</option>
-					    	<option>glosses</option>
-					    	<option>morphemes</option>
-					    	<option>pos</option>
-					    	<option>phrases</option>
-					    	<option>morphemes for glosses</option>
-					    	<option>glosses for morphemes</option>
-					    	<option>words for morphemes</option>
-					    	<option>morphemes for words</option>
-					    	<option>words for pos</option>
-					    	<option>pos for words</option>
-					    </select>	
 					</div>
-					<div id="secondformdiv">		
-					    <label for="words" id="firstlabel">word:</label>
-					    <input id = "words" type="text" name="words">					
-					    <label for="extratier" id="secondlabel">--:</label>
-					    <input id = "extratier" type="text" name="extratier" disabled="disabled" />						
-					   <!--  <button type = "submit" onClick="return lookFor(this.form);"></button> -->
-					    <input type="submit" id="submit" value="Search" />	
-					</div>	       
+					<div id="downloaddiv">
+						<a href="#" class="buttonDownload" id="xmldownloadbutton">Download XML</a>
+						<a href="#" class="buttonDownload" id="jsondownloadbutton">Download JSON</a>
+
+						<!-- <label for="jsondownloadbutton">JSON download</label>
+						<input type="button" value="" id="jsondownloadbutton" class="buttonDownload" />
+						<label for="xmldownloadbutton">XML download</label>
+						<input type="button" value="" id="xmldownloadbutton" class="buttonDownload" /> -->
+					</div>
+					<div id="selectalldiv">
+						<input type="button" value="Select All" id="selectallbutton" />
+					</div>
+					<div id="searchbarsdiv">
+						<div id="controlpanel">
+							<span class="buttonspan"><input type="button" id="subButton" value="Remove queries" /></span>
+							<span class="buttonspan"><input type="button" id="submit" value="Search" /></span>
+							<span class="buttonspan"><input type="button" id="addButton" value="Add query" /></span>
+						</div>
+					</div>       
 				</form>
 
 			</div>
 			<div id="resultsarea">
 				
 				<input id="back" type="button" name="back" value="Go Back" />
-				<div>
+				<!-- <div>
 					<p id = "num">
 						
 					</p>
-				</div>
-				<div class="refinebuttoncontainer">
-					<div id="revertdiv"><input type="button" id="revertbutton" value="Previous Results" /></div>
-					<input type="button" id="refinebutton0" value="Search in found igts" />
-				</div>
-				<!-- this will always be at the bottom -->
+				</div> -->
+				
 				<div>
 					<table id="sentences">
 						

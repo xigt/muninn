@@ -20,17 +20,143 @@
    
                 .attr("value", function(d){return d.id;});
 
+                $("#selectallbutton").click(selectAll);
                 $("#back").click(goBack);
-                $("#tiertype").change(changeLabel);
+                $("#searchbarsdiv").prepend(addExtraSearchDiv);
+
+                /*var submit = $("<input/>").attr("type", "button");
+                submit.attr("id", "submit");*/
+				/*input3.addClass("refinebutton");*/
+				var submit = $("#submit");
+				submit.click(refineSearch);
+				/*submit.val("Search");*/
+                /*input3.click(layeredSearch);*/
+                /*var div = $("<div></div>").append(submit);
+                div.css("text-align", "center");
+                div.css("padding", "10px");*/
+               /* $("#searchbarsdiv").append(div);
+                var addButton = $("<input/>").attr("type", "button");
+                addButton.attr("id", "addButton");*/
+                var div = $("#controlpanel");
+                var addButton = $("#addButton");
+                addButton.click(function() {
+                	div.before(addExtraSearchDiv);
+                });
+                /*addButton.val("Add query");
+                var subButton = $("<input/>").attr("type", "button");
+                subButton.attr("id", "subButton");*/
+                var subButton = $("#subButton");
+                subButton.click(subtractQueries);
+                /*subButton.val("Remove queries");
+                div.append(addButton);
+                div.prepend(subButton);*/
+                
+                /*$("#tiertype").change(changeLabel);*/
                 sortCorpusOptions();
-                $("#revertbutton").click(previousResults);
+                $("#corpus").change(userChangedCorpus);
+                /*$("#revertbutton").click(previousResults);*/
         });     
 	};	
 })();
 
 var currListItem = null;
-var currIgtIds = [];
+/*var currIgtIds = [];*/
 var savedResultsData = [];
+var searchLevel = 0;
+var currDeleting = false;
+
+function selectAll() {
+	$("input[name='subtractcheckbox']").prop("checked", true);
+	checkChanged();
+	$("#selectallbutton").val("Deselect All")
+	$("#selectallbutton").unbind("click");
+	$("#selectallbutton").click(deselectAll);
+}
+
+function deselectAll() {
+	$("input[name='subtractcheckbox']").prop("checked", false);
+	checkChanged();
+	$("#selectallbutton").val("Select All")
+	$("#selectallbutton").unbind("click");
+	$("#selectallbutton").click(selectAll);
+}
+
+function userChangedCorpus() {
+	searchLevel = 0;
+	deleteOldSavedData();
+}
+
+/*var favorite = [];
+            $.each($("input[name='sport']:checked"), function(){            
+                favorite.push($(this).val());
+            });*/
+
+function subtractQueries() {
+	$("#selectalldiv").show();
+	currDeleting = true;
+	$("#submit").prop("disabled", true);
+	$("#addButton").prop("disabled", true);
+	var subButton = $(this);
+	var children = $("#searchbarsdiv").children();
+	for (var i = 1; i < children.length - 1; i++) {
+		var div = $(children[i]);
+		var checkbox = $("<input/>").attr("type", "checkbox");
+		checkbox.attr("name", "subtractcheckbox");
+		checkbox.addClass("subtractcheckbox");
+		checkbox.val(i);
+		checkbox.change(checkChanged);
+		div.prepend(checkbox);
+	}
+	subButton.val("Done");
+	subButton.unbind("click");
+	subButton.click(doneDeleting);
+}
+
+function checkChanged() {
+	var subButton = $("#subButton");
+	if ($("input[name='subtractcheckbox']:checked").length > 0) {
+		subButton.val("Delete and Search");
+	} else {
+		subButton.val("Done");
+	}
+}
+
+function doneDeleting() {
+	$("#selectalldiv").hide();
+	$("#selectallbutton").val("Select All")
+	$("#selectallbutton").unbind("click");
+	$("#selectallbutton").click(selectAll);
+	var checkedBoxValues = [];
+	var min;
+	var children = $("#searchbarsdiv").children();
+    $.each($("input[name='subtractcheckbox']:checked"), function(){            
+        var indexOfSearchBar = parseInt($(this).val());
+        checkedBoxValues.push(indexOfSearchBar);
+        if (min == undefined || min > indexOfSearchBar) {
+        	min = indexOfSearchBar;
+        }
+        $(children[indexOfSearchBar]).remove();
+    });
+    $.each($("input[name='subtractcheckbox']"), function(){            
+        $(this).remove();
+    });
+    if (min != undefined) {
+	    if (savedResultsData.length < min) {
+	    	min = savedResultsData.length;
+	    }
+	    searchLevel = min;
+	    deleteOldSavedData();
+	    refineSearch();
+	}
+	$("#submit").prop("disabled", false);
+	$("#addButton").prop("disabled", false);
+	var subButton = $("#subButton");
+	subButton.val("Remove queries");
+	subButton.unbind("click");
+	subButton.click(subtractQueries);
+	currDeleting = false;
+
+}
 
 function lookFor() {
 	loadingAnimation();
@@ -38,7 +164,7 @@ function lookFor() {
 
 }
 //creates query, starts laoding animation
-function lookForHelper(input1, input2, tierType, idParameter){
+function lookForHelper(input1, input2, tierType, idParameter, p){
 		var tier1 = null;
 		var tier2 = null;
 		var path2 = null;
@@ -78,8 +204,11 @@ function lookForHelper(input1, input2, tierType, idParameter){
 			 		"\"]/" + ref) + idParameter;
 			if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
 					(tier1 == "words" && tier2 == "morphemes"))) {
-	    		var path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
+	    		path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
 			 		"\"]/" + ref + "/(. | referrer()[../@type=\"" + tier2 + "\"])") + idParameter;
+	    	} else {
+	    		path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
+			 		"\"]/" + ref + "/(. | referent()[../@type=\"" + tier2 + "\"])") + idParameter;
 	    	}
 		} else {
 		 	var referent = "";
@@ -108,13 +237,20 @@ function lookForHelper(input1, input2, tierType, idParameter){
 					$.ajax("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path2)).done(function(a, b) {
 					var d = a[0];
 					var igts2 = b[0].igts;
-					getData(d, tierType, tier1, tier2, igts2);
+					debugger;
+					var data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};
+					p.html("Number of Igts found: " + d.igt_count);
+					layeredSearch(data);
+					//getData(d, tierType, tier1, tier2, igts2);
 			});
 		} else {
 			$.ajax({
 				url: "http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path,
 				success: function(result) {
-					getData(result, tierType, tier1, tier2);
+					var data = {d: result, tierType: tierType, tier1: tier1, tier2: tier2, igts2: undefined};
+					p.html("Number of Igts found: " + result.igt_count);
+					layeredSearch(data);
+					//getData(result, tierType, tier1, tier2);
 				}
 			});
 		}
@@ -129,21 +265,34 @@ function lookForHelper(input1, input2, tierType, idParameter){
 	function addExtraSearchDiv(){
 		refineLevel++;
 		var select = $("<select></select>");
-		var options = $("#tiertype option").clone();
-		select.append(options);
+		var optValues = ["words", "glosses", "morphemes", "pos", "phrases", "morphemes for glosses", "glosses for morphemes",
+				"words for morphemes", "morphemes for words", "words for pos", "pos for words"];
+		/*var options = $("#tiertype option").clone();
+		select.append(options);*/
+
+		for (var i = 0; i < optValues.length; i++) {
+			var option = $("<option></option>");
+			option.val(optValues[i]);
+			option.html(optValues[i])
+			select.append(option);
+		}
+		
 		select.attr("id", "tiertype" + refineLevel);
 		select.change(changeLabel);
+		select.change(userInputChanged);
 
 		var div = $("<div></div>");
 		var input1 = $("<input/>").attr("type", "text");
 		input1.attr("id", "words" + refineLevel);
+		input1.change(userInputChanged);
 		var input2 = $("<input/>").attr("type", "text");
 		input2.attr("id", "extratier" + refineLevel);
 		input2.prop("disabled", true);
-		var input3 = $("<input/>").attr("type", "button");
-		input3.addClass("refinebutton");
+		input2.change(userInputChanged);
+		var add = $("<input/>").attr("type", "button");
+		/*input3.attr();
 		input3.click(refineSearch);
-		input3.val("Search")
+		input3.val("+")*/
 		var selLabel = $("<label></label>");
 		var label1 = $("<label></label>");
 		var label2 = $("<label></label>");
@@ -153,19 +302,62 @@ function lookForHelper(input1, input2, tierType, idParameter){
 		label1.prop("for", "words" + refineLevel);
 		label2.prop("for", "extratier" + refineLevel);
 		selLabel.prop("for", "tiertype" + refineLevel);
+		var p = $("<p></p>");
+		p.addClass("numofigts");
 		div.append(selLabel);
 		div.append(select);
 		div.append(label1);
 		div.append(input1);
 		div.append(label2);
 		div.append(input2);
-		div.append(input3);
-		div.css("margin-top", "50px");
-		$(this).after(div);
+		div.append(p);
+		/*div.append(input3);*/
+		div.addClass("searchbarcontainer");
+		return div;
+		/*$(this).after(div);
 		$(this).val("Hide");
 		
 		$(this).click(hideExtraSearchDiv);
-		$(this).unbind("click", addExtraSearchDiv);
+		$(this).unbind("click", addExtraSearchDiv);*/
+	}
+
+	function userInputChanged() {
+		var form =  $(this);
+		var div = form.parent();
+		var children = $("#searchbarsdiv").children();
+		var found = false;
+		var index = 0;
+		while (!found) {
+			var testingDiv = children[index];
+			if (testingDiv == div[0]) {
+				found = true;
+			} else {
+				index++;
+			}
+		}
+		if (index < searchLevel) {
+			searchLevel = index;
+			deleteOldSavedData();
+			/*smallEnough = false;
+			while (!smallEnough) {
+				if (savedResultsData.length == searchLevel) {
+					smallEnough = true;
+				} else {
+					savedResultsData.pop();
+				}
+			}*/
+		} 
+	}
+
+	function deleteOldSavedData() {
+		smallEnough = false;
+		while (!smallEnough) {
+			if (savedResultsData.length == searchLevel) {
+				smallEnough = true;
+			} else {
+				savedResultsData.pop();
+			}
+		}
 	}
 
 	function hideExtraSearchDiv() {
@@ -179,39 +371,87 @@ function lookForHelper(input1, input2, tierType, idParameter){
 	}
 
 	function refineSearch() {
-		var children = $(this).parent().children();
-		var idParameter = "&id=";
-		for (var i = 0; i < currIgtIds.length; i++) {
-			if (i != currIgtIds.length - 1) {
-				idParameter = idParameter + currIgtIds[i] + ",";
-			} else {
-				idParameter = idParameter + currIgtIds[i];
-			}
-		}
+		$("#submit").prop("disabled", true);
 		refineLoadingAnimation();
-		lookForHelper($(children[3]), $(children[5]), $(children[1]).val(), idParameter);
+		if (searchLevel == $("#searchbarsdiv").children().length - 1) {
+			var data = savedResultsData[savedResultsData.length - 1];
+			getData(data.d, data.tierType, data.tier1, data.tier2, data.igts2);
+		} else {
+			var children = $($("#searchbarsdiv").children()[searchLevel]).children();
+			var currIgtIds = [];
+			var idParameter;
+			if (savedResultsData.length == 0) {
+					idParameter = "";
+			} else {
+				var igts = savedResultsData[searchLevel - 1].d.igts;
+				if (igts.length != 0) {
+					idParameter = "&id=";
+					for (var i = 0; i < igts.length; i++) {
+						if (i != igts.length - 1) {
+							idParameter = idParameter + igts[i].id + ",";
+						} else {
+							idParameter = idParameter + igts[i].id;
+						}
+					}
+				}
+			}
+			var p = $(children[6]);
+			/*for (var i = 0; i < currIgtIds.length; i++) {
+				if (i != currIgtIds.length - 1) {
+					idParameter = idParameter + currIgtIds[i] + ",";
+				} else {
+					idParameter = idParameter + currIgtIds[i];
+				}
+			}*/
+			if (idParameter != undefined) {
+				lookForHelper($(children[3]), $(children[5]), $(children[1]).val(), idParameter, p);
+			} else {
+				p.html("Unable to perform this query due to lack of igts from previous search.");
+				loadResults();
+				var allNumOfIgtsPs = $(".numofigts");
+				for (var i = searchLevel + 1; i < allNumOfIgtsPs.length; i++) {
+					allNumOfIgtsPs[i].innerHTML = "Unable to perform this query due to lack of igts from previous search.";
+				}
+			}
+		}	
+	}
+
+	function layeredSearch(data) {
+		savedResultsData.push(data);
+		/*currIgtIds = [];
+		var igts = data.d.igts;
+		for (var i = 0; i < igts.length; i++) {
+			currIgtIds.push(igts[i].id);
+		}*/
+		searchLevel++;
+		if (searchLevel == $("#searchbarsdiv").children().length - 1) {
+			getData(data.d, data.tierType, data.tier1, data.tier2, data.igts2);
+		} else {
+			refineSearch();
+		}
 	}
 
 	function getData(d, tierType, tier1, tier2, igts2, reverting) {
-		if (!reverting) {
+		/*if (!reverting) {
 			var resultData = [d, tierType, tier1, tier2, igts2];
 			savedResultsData.push(resultData);
-		}
+		}*/
 		currIgts = d.igts; 
-	    d3.select("#num")
+	    /*d3.select("#num")
 	      .append("p")
 	      	.attr("id", "igt_count")
 	        .text(function() {
 	            return "Number of igts found: " + d.igt_count;
-	     	});
+	     	});*/
 	    if (d.igt_count > 0) {
 	    	$(".refinebuttoncontainer").show();
 			setUpIgtList(d);
 		    if (tierType == "phrases") {
 		    	createPhraseRows(currIgts);
 		    } else {
-		    	if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
-				(tier1 == "words" && tier2 == "morphemes"))) {
+		    	/*if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
+				(tier1 == "words" && tier2 == "morphemes"))) {*/
+				if (tier2 != null) {
 		    		createRows(currIgts,tierType, igts2, tier2);
 		    	} else {
 		    		createRows(currIgts, tierType);
@@ -239,7 +479,6 @@ function lookForHelper(input1, input2, tierType, idParameter){
 	}
 
 	function setUpIgtList(d) {
-		currIgtIds = [];
 		d3.select("#igt_id")
 	      .selectAll("li")
 	      .data(d.igts)
@@ -252,12 +491,11 @@ function lookForHelper(input1, input2, tierType, idParameter){
 	      		lengthen();			  
 	      	})
 	      	.text(function(d) {
-	      			currIgtIds.push(d.id);
 		        	return d.id;
 		     });
 	}
 
-	function previousResults() {
+	/*function previousResults() {
 		var length = savedResultsData.length;
 		if (length > 1) {
 			refineLoadingAnimation();
@@ -266,10 +504,10 @@ function lookForHelper(input1, input2, tierType, idParameter){
 			getData( lastSaved[0], lastSaved[1], lastSaved[2], lastSaved[3], lastSaved[4], true)
 		}
 
-	}
+	}*/
 
 	function loadingAnimation() {
-		savedResultsData = [];
+		/*savedResultsData = [];*/
 		d3.select("#num").selectAll("p").remove();
 		d3.select("#igt_id").selectAll("li").remove();
 		d3.select("#sentences").selectAll("tr").remove();
@@ -309,11 +547,12 @@ function lookForHelper(input1, input2, tierType, idParameter){
 	    	listItems[i].setAttribute("id", "scrolllistitem" + i);
 	    }
 	    $("#loadingicon").hide();
-	    $("#num").show();
+	    /*$("#num").show();*/
 	    if (listItems.length > 0) {
 	    	$("#igtlist").show();
 	    	$("#sentences").show();
 	    }
+	    $("#submit").prop("disabled", false);
 	}
 
 	function createRows(igts, tierType, igts2, tier2) {
@@ -446,19 +685,27 @@ function lookForHelper(input1, input2, tierType, idParameter){
 		var firstInput;
 		var secondInput;
 		var sel = $(this);
-		if (sel.attr("id") == "tiertype") {
+		/*if (sel.attr("id") == "tiertype") {
 			firstLabel = $("#firstlabel");
 			secondLabel = $("#secondlabel");
 			firstInput = $("#words");
 			secondInput = $("#extratier");
-		} else {
-			var div = sel.parent();
-			var children = div.children();
+		} else {*/
+
+		var div = sel.parent();
+		var children = div.children();
+		if (!currDeleting) {
 			firstLabel = $(children[2]);
 			secondLabel = $(children[4]);
 			firstInput = $(children[3]);
 			secondInput = $(children[5]);
+		} else {
+			firstLabel = $(children[3]);
+			secondLabel = $(children[5]);
+			firstInput = $(children[4]);
+			secondInput = $(children[6]);
 		}
+		/*}*/
 		var option = sel.val();
 		var words = option.split(" ");
 		secondInput.val("");
