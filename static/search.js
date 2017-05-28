@@ -1,8 +1,6 @@
 (function() {
 	'use strict';
 
-	// attaches a method to the calculat ebutton
-	// adds options to the corpus drop down menu
 	window.onload = function () {
 		d3.xhr("http://odin.xigt.org/v1/corpora")
         .mimeType("application/json")
@@ -19,51 +17,66 @@
                 })
    
                 .attr("value", function(d){return d.id;});
-
+                $("#xmldownloadbutton").click(xmlDownload);
+                $("#jsondownloadbutton").click(jsonDownload);
                 $("#selectallbutton").click(selectAll);
                 $("#back").click(goBack);
                 $("#searchbarsdiv").prepend(addExtraSearchDiv);
 
-                /*var submit = $("<input/>").attr("type", "button");
-                submit.attr("id", "submit");*/
-				/*input3.addClass("refinebutton");*/
+                
 				var submit = $("#submit");
 				submit.click(refineSearch);
-				/*submit.val("Search");*/
-                /*input3.click(layeredSearch);*/
-                /*var div = $("<div></div>").append(submit);
-                div.css("text-align", "center");
-                div.css("padding", "10px");*/
-               /* $("#searchbarsdiv").append(div);
-                var addButton = $("<input/>").attr("type", "button");
-                addButton.attr("id", "addButton");*/
+				
                 var div = $("#controlpanel");
                 var addButton = $("#addButton");
                 addButton.click(function() {
                 	div.before(addExtraSearchDiv);
                 });
-                /*addButton.val("Add query");
-                var subButton = $("<input/>").attr("type", "button");
-                subButton.attr("id", "subButton");*/
+                
                 var subButton = $("#subButton");
                 subButton.click(subtractQueries);
-                /*subButton.val("Remove queries");
-                div.append(addButton);
-                div.prepend(subButton);*/
                 
-                /*$("#tiertype").change(changeLabel);*/
                 sortCorpusOptions();
                 $("#corpus").change(userChangedCorpus);
-                /*$("#revertbutton").click(previousResults);*/
+                
         });     
 	};	
 })();
 
 var currListItem = null;
-/*var currIgtIds = [];*/
 var savedResultsData = [];
+var savedMainQueryPaths = [];
 var searchLevel = 0;
 var currDeleting = false;
+var downloadableIgtObject;
+var currentSavedQueryPath;
+
+function jsonDownload() {
+	download("json", "download");
+	
+}
+
+function xmlDownload() {
+	download("xml", "download");
+	
+}
+
+function download(dataType, filename) {
+	var element = document.createElement('a');
+	
+	var xmlJsonDownloadInfo = currentSavedQueryPath;
+	element.setAttribute('href', xmlJsonDownloadInfo.url + "." + dataType + "?id=" + xmlJsonDownloadInfo.ids);
+	element.setAttribute('download', filename);
+
+	element.style.display = 'none';
+	document.body.appendChild(element);
+
+	element.click();
+
+	document.body.removeChild(element);
+}
+
+
 
 function selectAll() {
 	$("input[name='subtractcheckbox']").prop("checked", true);
@@ -86,16 +99,15 @@ function userChangedCorpus() {
 	deleteOldSavedData();
 }
 
-/*var favorite = [];
-            $.each($("input[name='sport']:checked"), function(){            
-                favorite.push($(this).val());
-            });*/
-
 function subtractQueries() {
 	$("#selectalldiv").show();
 	currDeleting = true;
 	$("#submit").prop("disabled", true);
 	$("#addButton").prop("disabled", true);
+	$("#submit").css("background-color", "darkgray");
+	$("#addButton").css("background-color", "darkgray");
+	$("#submit").css("border-color", "darkgray");
+	$("#addButton").css("border-color", "darkgray");
 	var subButton = $(this);
 	var children = $("#searchbarsdiv").children();
 	for (var i = 1; i < children.length - 1; i++) {
@@ -146,10 +158,15 @@ function doneDeleting() {
 	    }
 	    searchLevel = min;
 	    deleteOldSavedData();
+	    currentSavedQueryPath = savedMainQueryPaths[savedMainQueryPaths.length - 1];
 	    refineSearch();
 	}
 	$("#submit").prop("disabled", false);
 	$("#addButton").prop("disabled", false);
+	$("#submit").css("background-color", "");
+	$("#addButton").css("background-color", "");
+	$("#submit").css("border-color", "");
+	$("#addButton").css("border-color", "");
 	var subButton = $("#subButton");
 	subButton.val("Remove queries");
 	subButton.unbind("click");
@@ -164,20 +181,24 @@ function lookFor() {
 
 }
 //creates query, starts laoding animation
-function lookForHelper(input1, input2, tierType, idParameter, p){
+function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 		var tier1 = null;
 		var tier2 = null;
 		var path2 = null;
+		var path;
 		if (idParameter == undefined) {
 			idParameter = "";
 		}
-		if (input1 == undefined || input2 == undefined) {
-			input1 = $("#words");
-			input2 = $("#extratier");
-			tierType = $("#tiertype").val();
-		} 
-		//Factor this if and else statement.
-		if (tierType.includes(" ")) {
+		
+		if (tierType == "pos for words") {
+			var ref = "referrer()[../@type=pos]";
+			path = encodeURIComponent("tier[@type=\"" + "words" + "\"]/item[value()=\"" + input2.val() +
+			 		"\"]/" + ref) + idParameter;
+		} else if (tierType == "glosses for morphemes") {
+			ref = "referrer()[../@type=glosses]";
+			path = encodeURIComponent("tier[@type=\"morphemes\"]/item[value()=\"" + input2.val() +
+			 		"\"]/" + ref + "/(. | referent()[../@type=\"morphemes\"])") + idParameter;
+		} else if (tierType.includes(" ")) {
 			var tokens = tierType.split(" ");
 			var tier1 = tokens[0];
 			var tier2 = tokens[tokens.length - 1];
@@ -200,7 +221,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 				ref = "referent()[../@type=\"" + tier1 + "\"]" + primaryTierValue;
 			}
 			
-			var path = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
+			path = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
 			 		"\"]/" + ref) + idParameter;
 			if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
 					(tier1 == "words" && tier2 == "morphemes"))) {
@@ -226,7 +247,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 			} else {
 				entered = input1.val();
 			}
-			var path = encodeURIComponent("tier[@type=\""+  tierType  + 
+			path = encodeURIComponent("tier[@type=\""+  tierType  + 
 										"\"]" + referent + "/item[value()=\"" + entered + "\"]") + idParameter;
 		}
 
@@ -237,27 +258,23 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 					$.ajax("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path2)).done(function(a, b) {
 					var d = a[0];
 					var igts2 = b[0].igts;
-					debugger;
 					var data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};
+					loadingImg.hide();
 					p.html("Number of Igts found: " + d.igt_count);
-					layeredSearch(data);
-					//getData(d, tierType, tier1, tier2, igts2);
+					layeredSearch(data, name);
 			});
 		} else {
 			$.ajax({
 				url: "http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path,
 				success: function(result) {
 					var data = {d: result, tierType: tierType, tier1: tier1, tier2: tier2, igts2: undefined};
+					loadingImg.hide();
 					p.html("Number of Igts found: " + result.igt_count);
-					layeredSearch(data);
-					//getData(result, tierType, tier1, tier2);
+					layeredSearch(data, name);
 				}
 			});
 		}
-		
-		
     		return false;
-    	// igtLayout("#igt", xigtJsonData);
 	}
 
 	var refineLevel = 0;
@@ -265,15 +282,14 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 	function addExtraSearchDiv(){
 		refineLevel++;
 		var select = $("<select></select>");
-		var optValues = ["words", "glosses", "morphemes", "pos", "phrases", "morphemes for glosses", "glosses for morphemes",
-				"words for morphemes", "morphemes for words", "words for pos", "pos for words"];
-		/*var options = $("#tiertype option").clone();
-		select.append(options);*/
-
+		var optHTML = ["words", "glosses", "morphemes", "pos", "phrases",
+				"words for morphemes", "morphemes for words"];
+		var optValues = ["words", "morphemes for glosses", "morphemes", "words for pos", "phrases",
+				"words for morphemes", "morphemes for words"];
 		for (var i = 0; i < optValues.length; i++) {
 			var option = $("<option></option>");
 			option.val(optValues[i]);
-			option.html(optValues[i])
+			option.html(optHTML[i])
 			select.append(option);
 		}
 		
@@ -287,38 +303,34 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 		input1.change(userInputChanged);
 		var input2 = $("<input/>").attr("type", "text");
 		input2.attr("id", "extratier" + refineLevel);
-		input2.prop("disabled", true);
+		input2.css("display", "none");
 		input2.change(userInputChanged);
 		var add = $("<input/>").attr("type", "button");
-		/*input3.attr();
-		input3.click(refineSearch);
-		input3.val("+")*/
 		var selLabel = $("<label></label>");
 		var label1 = $("<label></label>");
 		var label2 = $("<label></label>");
 		label1.html("word:");
-		label2.html("--:");
+		label2.css("display", "none");
 		selLabel.html("Search for:");
 		label1.prop("for", "words" + refineLevel);
 		label2.prop("for", "extratier" + refineLevel);
 		selLabel.prop("for", "tiertype" + refineLevel);
 		var p = $("<p></p>");
 		p.addClass("numofigts");
+		var img = $("<img></img>");
+		img.attr("alt", "loading icon");
+		img.attr("src", "../static/spin.svg");
+		img.addClass("smallloadingicon");
 		div.append(selLabel);
 		div.append(select);
 		div.append(label1);
 		div.append(input1);
 		div.append(label2);
 		div.append(input2);
+		div.append(img);
 		div.append(p);
-		/*div.append(input3);*/
 		div.addClass("searchbarcontainer");
 		return div;
-		/*$(this).after(div);
-		$(this).val("Hide");
-		
-		$(this).click(hideExtraSearchDiv);
-		$(this).unbind("click", addExtraSearchDiv);*/
 	}
 
 	function userInputChanged() {
@@ -338,14 +350,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 		if (index < searchLevel) {
 			searchLevel = index;
 			deleteOldSavedData();
-			/*smallEnough = false;
-			while (!smallEnough) {
-				if (savedResultsData.length == searchLevel) {
-					smallEnough = true;
-				} else {
-					savedResultsData.pop();
-				}
-			}*/
 		} 
 	}
 
@@ -355,6 +359,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 			if (savedResultsData.length == searchLevel) {
 				smallEnough = true;
 			} else {
+				savedMainQueryPaths.pop();
 				savedResultsData.pop();
 			}
 		}
@@ -371,6 +376,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 	}
 
 	function refineSearch() {
+		$("#downloaddiv").hide();
 		$("#submit").prop("disabled", true);
 		refineLoadingAnimation();
 		if (searchLevel == $("#searchbarsdiv").children().length - 1) {
@@ -395,16 +401,31 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 					}
 				}
 			}
-			var p = $(children[6]);
-			/*for (var i = 0; i < currIgtIds.length; i++) {
-				if (i != currIgtIds.length - 1) {
-					idParameter = idParameter + currIgtIds[i] + ",";
-				} else {
-					idParameter = idParameter + currIgtIds[i];
-				}
-			}*/
+			var p = $(children[7]);
+			p.html("");
+
 			if (idParameter != undefined) {
-				lookForHelper($(children[3]), $(children[5]), $(children[1]).val(), idParameter, p);
+				var tierType = $(children[1]).val();
+				var input1 = $(children[3]);
+				var input2 = $(children[5]);
+				if (tierType == "words for pos" && input1.val() == "" && input2.val() != "") {
+					tierType = "pos for words";
+				}
+				if (tierType == "morphemes for glosses" && input1.val() == "" && input2.val() != "") {
+					tierType = "glosses for morphemes";
+				}
+				var loadingImg = $(children[6]);
+				loadingImg.show();
+				$("#submit").prop("disabled", true);
+				$("#addButton").prop("disabled", true);
+				$("#subButton").prop("disabled", true);
+				$("#submit").css("background-color", "darkgray");
+				$("#addButton").css("background-color", "darkgray");
+				$("#subButton").css("background-color", "darkgray");
+				$("#submit").css("border-color", "darkgray");
+				$("#addButton").css("border-color", "darkgray");
+				$("#subButton").css("border-color", "darkgray");
+				lookForHelper(input1, input2, tierType, idParameter, p, loadingImg);
 			} else {
 				p.html("Unable to perform this query due to lack of igts from previous search.");
 				loadResults();
@@ -416,13 +437,24 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 		}	
 	}
 
-	function layeredSearch(data) {
+	function layeredSearch(data, name) {
 		savedResultsData.push(data);
-		/*currIgtIds = [];
 		var igts = data.d.igts;
+		var ids = "";
 		for (var i = 0; i < igts.length; i++) {
-			currIgtIds.push(igts[i].id);
-		}*/
+			if (i != igts.length - 1) {
+				ids += igts[i].id + ",";
+			} else {
+				ids += igts[i].id;
+			}
+		}
+		var xmlJsonDownloadInfo = {
+			url: "http://odin.xigt.org/v1/corpora/" + name,
+			ids: ids
+		}
+		savedMainQueryPaths.push(xmlJsonDownloadInfo);
+		currentSavedQueryPath = xmlJsonDownloadInfo;
+		
 		searchLevel++;
 		if (searchLevel == $("#searchbarsdiv").children().length - 1) {
 			getData(data.d, data.tierType, data.tier1, data.tier2, data.igts2);
@@ -431,26 +463,15 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 		}
 	}
 
-	function getData(d, tierType, tier1, tier2, igts2, reverting) {
-		/*if (!reverting) {
-			var resultData = [d, tierType, tier1, tier2, igts2];
-			savedResultsData.push(resultData);
-		}*/
+	function getData(d, tierType, tier1, tier2, igts2) {
 		currIgts = d.igts; 
-	    /*d3.select("#num")
-	      .append("p")
-	      	.attr("id", "igt_count")
-	        .text(function() {
-	            return "Number of igts found: " + d.igt_count;
-	     	});*/
 	    if (d.igt_count > 0) {
-	    	$(".refinebuttoncontainer").show();
+	    	downloadableIgtObject = d;
+	    	$("#downloaddiv").show();
 			setUpIgtList(d);
 		    if (tierType == "phrases") {
 		    	createPhraseRows(currIgts);
 		    } else {
-		    	/*if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
-				(tier1 == "words" && tier2 == "morphemes"))) {*/
 				if (tier2 != null) {
 		    		createRows(currIgts,tierType, igts2, tier2);
 		    	} else {
@@ -495,19 +516,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 		     });
 	}
 
-	/*function previousResults() {
-		var length = savedResultsData.length;
-		if (length > 1) {
-			refineLoadingAnimation();
-			var lastSaved = savedResultsData[length - 2];
-			savedResultsData.pop();
-			getData( lastSaved[0], lastSaved[1], lastSaved[2], lastSaved[3], lastSaved[4], true)
-		}
-
-	}*/
-
 	function loadingAnimation() {
-		/*savedResultsData = [];*/
 		d3.select("#num").selectAll("p").remove();
 		d3.select("#igt_id").selectAll("li").remove();
 		d3.select("#sentences").selectAll("tr").remove();
@@ -553,16 +562,39 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 	    	$("#sentences").show();
 	    }
 	    $("#submit").prop("disabled", false);
+		$("#addButton").prop("disabled", false);
+		$("#subButton").prop("disabled", false);
+		$("#submit").css("background-color", "");
+		$("#addButton").css("background-color", "");
+		$("#subButton").css("background-color", "");
+		$("#submit").css("border-color", "");
+		$("#addButton").css("border-color", "");
+		$("#subButton").css("border-color", "");
 	}
 
 	function createRows(igts, tierType, igts2, tier2) {
-		if (tierType.includes(" ")) {
+		var isPosForWords = false;
+		var isGlossesForMorphemes = false;
+		if (tierType == "pos for words") {
+			isPosForWords = true;
+		}
+		if (tierType == "glosses for morphemes") {
+			isGlossesForMorphemes = true;
+			tierType = "morphemes";
+		}
+		if (tierType.includes(" ") && !isGlossesForMorphemes) {
 			var tokens = tierType.split(" ");
 			tierType = tokens[0];
 		}
 		var alignments = null;
-		if (igts2 != undefined) {
-			alignments = getAlignments(igts2, tier2);
+		if (igts2 != undefined || isPosForWords || isGlossesForMorphemes) {
+			if (isPosForWords) {
+				alignments = getPosForWordsAlignments(igts);
+			} else if (isGlossesForMorphemes) {
+				alignments = getGlossesForMorphemesAlignments(igts);
+			} else {
+				alignments = getAlignments(igts2, tier2);
+			}
 		}
 		var rowIndex = 0;
 		var mainSpanIndex = 0;
@@ -570,6 +602,9 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 		for (var i = 0; i < igts.length; i++) {
 			var igt = igts[i];
 			var matchObject = getMatchObject(igt);
+			if (isGlossesForMorphemes) {
+				matchObject = glossesForMorphemesMatchObject(matchObject);
+			} 
 			for (var j = 0; j < matchObject.length; j++) {
 				var row = $("<tr></tr>");
 				if (odd) {
@@ -612,6 +647,73 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 			odd = !odd;
 		}
 
+	}
+
+	function glossesForMorphemesMatchObject(matchObject) {
+		var morphemeMatchObject = [];
+		morphemeMatchObject.push(matchObject[1]);
+		var previousMorphemeNumber = matchObject[1].attributes.item;
+		for (var i = 3; i < matchObject.length; i += 2) {
+			if (matchObject[i].attributes.item != previousMorphemeNumber) {
+				morphemeMatchObject.push(matchObject[i]);
+				previousMorphemeNumber = matchObject[i].attributes.item;
+			}
+		}
+		return morphemeMatchObject;
+	}
+
+	function getGlossesForMorphemesAlignments(igts) {
+		var results = [];
+		for (var i = 0; i < igts.length; i++) {
+			var igt = igts[i];
+			var matchObject = getMatchObject(igt);
+			var glosses = getGlosses(igt);
+			var currMorpheme = matchObject[1].attributes.item;
+			var currMorphemeIndex = 0;
+			var glossItemArray = [];
+			var glossItemArrayRow = [];
+			glossItemArray.push(glossItemArrayRow);
+			for (var j = 0; j < matchObject.length; j += 2) {
+				if (matchObject[j + 1].attributes.item != currMorpheme) {
+					currMorpheme = matchObject[j + 1].attributes.item;
+					currMorphemeIndex++;
+					var newRow = [];
+					glossItemArray.push(newRow);
+				}
+				glossItemArray[currMorphemeIndex].push(matchObject[j].attributes.item);
+			}
+			var igtRow = [];
+			for (var j = 0; j < glossItemArray.length; j++) {
+				var glossRow = glossItemArray[j];
+				var alignment = [];
+				for (var k = 0; k < glossRow.length; k++) {
+					var glossIndex = parseInt(glossRow[k].substring(1)) - 1;
+					var token = glosses[glossIndex];
+					alignment.push(token);
+				}
+				igtRow.push(alignment);
+			}
+			results.push(igtRow);
+		}
+		return results;
+	}
+
+	function getPosForWordsAlignments(igts) {
+		var results = [];
+		for (var i = 0; i < igts.length; i++) {
+			var igt = igts[i];
+			var matchObject = getMatchObject(igt);
+			var matchedItemNumbers = getMatchedItemNumbers(matchObject, "pos");
+			var poses = getPos(igt);
+			var igtRow = [];
+			for (var j = 0; j < matchedItemNumbers.length; j++) {
+				var index = matchedItemNumbers[j] - 1;
+				var alignment = [poses[index]];
+				igtRow.push(alignment);
+			}
+			results.push(igtRow);
+		}
+		return results;
 	}
 
 	function getAlignments(igts, tier2) {
@@ -685,13 +787,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 		var firstInput;
 		var secondInput;
 		var sel = $(this);
-		/*if (sel.attr("id") == "tiertype") {
-			firstLabel = $("#firstlabel");
-			secondLabel = $("#secondlabel");
-			firstInput = $("#words");
-			secondInput = $("#extratier");
-		} else {*/
-
 		var div = sel.parent();
 		var children = div.children();
 		if (!currDeleting) {
@@ -711,14 +806,19 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 		secondInput.val("");
 		firstInput.val("");
 		if (words.length > 1) {
-			secondLabel.html(makeSingular(words[0]) + " (optional):");
+			if (option == "words for pos" || option == "morphemes for glosses") {
+				secondLabel.html(makeSingular(words[0]) + ":");
+			} else {
+				secondLabel.html(makeSingular(words[0]) + " (optional):");
+			}
 			var lastWord = makeSingular(words[words.length - 1]);
 			firstLabel.html(lastWord + ":");
-			secondInput.prop("disabled", false);
+			secondInput.css("display", "");
+			secondLabel.css("display", "");
 		} else {
 			firstLabel.html(makeSingular(words[0]) + ":");
-			secondInput.prop("disabled", true);
-			secondLabel.html("--:");
+			secondInput.css("display", "none");
+			secondLabel.css("display", "none");
 		}
 	}
 
@@ -770,9 +870,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 		td.append(div);
 	}
 
-	// third cut and paste
-
-		function igtSelected(liTag) {
+	function igtSelected(liTag) {
 		if (currListItem != null) {
 			$("#" + currListItem).removeClass("selected");
 		}
@@ -1163,34 +1261,22 @@ function lookForHelper(input1, input2, tierType, idParameter, p){
 	function getMorphemes(igt) {
 		var words = getWords(igt);
 		var multiDimArr = [];
-		/*for (var i = 0; i < words.length; i++) {
-			var newArr = [];
-			var spaceArray = [];
-			spaceArray.push(" ");
-			multiDimArr.push(newArr);
-			multiDimArr.push(spaceArray);
-		}*/
 		var tiers = igt.tiers;
 		var morphemeTier = idMatcher(tiers, "m");
 		var items = morphemeTier.items;
-		// Factor this code out.
-		//var morphemes = [];
 		for (var i = 0; i < items.length; i++) {
 			var segment = items[i].attributes.segmentation;
 			if (!segment.includes("[")) {
 				wordNumber = parseInt(segment.substring(1));
 				var morpheme = words[wordNumber - 1];
 				multiDimArr.push(morpheme);
-				//morphemes.push(words[wordNumber - 1]);
 			} else {
 				var index = segment.indexOf("[");
 				var wordNumber = parseInt(segment.substring(1, index));
 				var span = getSpan(segment);
 				var morpheme = words[wordNumber - 1].substring(span[0], span[1]);
 				multiDimArr.push(morpheme);
-				//morphemes.push(words[wordNumber - 1].substring(span[0], span[1]));
 			}
 		}
-		//return morphemes;
 		return multiDimArr;
 	}
