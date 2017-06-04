@@ -175,13 +175,8 @@ function doneDeleting() {
 
 }
 
-function lookFor() {
-	loadingAnimation();
-	lookForHelper();
-
-}
 //creates query, starts laoding animation
-function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
+	function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, input3) {
 		var tier1 = null;
 		var tier2 = null;
 		var path2 = null;
@@ -198,11 +193,19 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 			ref = "referrer()[../@type=glosses]";
 			path = encodeURIComponent("tier[@type=\"morphemes\"]/item[value()=\"" + input2.val() +
 			 		"\"]/" + ref + "/(. | referent()[../@type=\"morphemes\"])") + idParameter;
+		} else if (tierType == "morphemes for words") {
+			ref = "referrer()[../@type=morphemes]";
+			path = encodeURIComponent("tier[@type=\"words\"]/item[value()=\"" + input2.val() +
+			 		"\"]/" + ref + "/(. | referent()[../@type=\"words\"])") + idParameter;
+		} else if (tierType == "glosses for words") {
+			ref = "referrer()[../@type=glosses]";
+			path = encodeURIComponent("tier[@type=\"words\"]/item[value()=\"" + input2.val() +
+			 		"\"]/" + ref + "/(. | referent()[../@type=\"words\"])") + idParameter;
 		} else if (tierType.includes(" ")) {
 			var tokens = tierType.split(" ");
 			var tier1 = tokens[0];
 			var tier2 = tokens[tokens.length - 1];
-			tierType = tier1;
+			/*tierType = tier1;*/
 			var primaryTierValue = "";
 			if (input2.val() != "") {
 				primaryTierValue = "[value()=\"" + input2.val() + "\"]";
@@ -224,13 +227,15 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 			path = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
 			 		"\"]/" + ref) + idParameter;
 			if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
-					(tier1 == "words" && tier2 == "morphemes"))) {
+					(tier1 == "words" && tier2 == "morphemes") || (tier1 == "words" && tier2 == "glosses"))) {
 	    		path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
 			 		"\"]/" + ref + "/(. | referrer()[../@type=\"" + tier2 + "\"])") + idParameter;
 	    	} else {
 	    		path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
 			 		"\"]/" + ref + "/(. | referent()[../@type=\"" + tier2 + "\"])") + idParameter;
 	    	}
+	    } else if (tierType == "languages") {
+	    	path = path= ".[metadata//dc:subject/text()=\"" + input3.val() + "\"]";
 		} else {
 		 	var referent = "";
 			if (tierType == "words") {
@@ -282,10 +287,8 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 	function addExtraSearchDiv(){
 		refineLevel++;
 		var select = $("<select></select>");
-		var optHTML = ["words", "glosses", "morphemes", "pos", "phrases",
-				"words for morphemes", "morphemes for words"];
-		var optValues = ["words", "morphemes for glosses", "morphemes", "words for pos", "phrases",
-				"words for morphemes", "morphemes for words"];
+		var optHTML = ["words", "morphemic glosses", "morphemes", "pos", "phrases", "lexical glosses", "languages"];
+		var optValues = ["words", "morphemes for glosses", "words for morphemes", "words for pos", "phrases", "words for glosses", "languages"];
 		for (var i = 0; i < optValues.length; i++) {
 			var option = $("<option></option>");
 			option.val(optValues[i]);
@@ -305,10 +308,23 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 		input2.attr("id", "extratier" + refineLevel);
 		input2.css("display", "none");
 		input2.change(userInputChanged);
+
+		var input3 = $("<select></select>");
+		input3.css("display", "none");
+		input3.attr("id", "languageinput" + refineLevel);
+		input3.change(userInputChanged);
+		var label3 = $("<label></label>");
+		label3.html("language:");
+		label3.css("display", "none");
+		label3.prop("for", "languageinput" + refineLevel);
+
 		var add = $("<input/>").attr("type", "button");
 		var selLabel = $("<label></label>");
 		var label1 = $("<label></label>");
 		var label2 = $("<label></label>");
+		
+		
+
 		label1.html("word:");
 		label2.css("display", "none");
 		selLabel.html("Search for:");
@@ -327,6 +343,8 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 		div.append(input1);
 		div.append(label2);
 		div.append(input2);
+		div.append(label3);
+		div.append(input3);
 		div.append(img);
 		div.append(p);
 		div.addClass("searchbarcontainer");
@@ -401,8 +419,12 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 					}
 				}
 			}
-			var p = $(children[7]);
-			p.html("");
+			var p = $(children[9]);
+			/*p.html("");*/
+			var allPs = $(".numofigts");
+			for (var i = searchLevel; i < allPs.length; i++) {
+				$(allPs[i]).html("");
+			}
 
 			if (idParameter != undefined) {
 				var tierType = $(children[1]).val();
@@ -410,11 +432,14 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 				var input2 = $(children[5]);
 				if (tierType == "words for pos" && input1.val() == "" && input2.val() != "") {
 					tierType = "pos for words";
-				}
-				if (tierType == "morphemes for glosses" && input1.val() == "" && input2.val() != "") {
+				} else if (tierType == "morphemes for glosses" && input1.val() == "" && input2.val() != "") {
 					tierType = "glosses for morphemes";
+				} else if (tierType == "words for glosses" && input1.val() == "" && input2.val() != "") {
+					tierType = "glosses for words";
+				} else if (tierType == "words for morphemes" && input1.val() == "" && input2.val() != "") {
+					tierType = "morphemes for words";
 				}
-				var loadingImg = $(children[6]);
+				var loadingImg = $(children[8]);
 				loadingImg.show();
 				$("#submit").prop("disabled", true);
 				$("#addButton").prop("disabled", true);
@@ -478,6 +503,9 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 		    		createRows(currIgts, tierType);
 		    	}
 		    }
+		    /*if (tierType.includes(" ")) {
+		    	tierType = tierType.split(" ")[0];
+		    }*/
 	      	var trHeader = $("<tr></tr>");
 	      	var th1 = $("<th></th>");
 	      	var th2 = $("<th></th>");
@@ -575,25 +603,44 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 	function createRows(igts, tierType, igts2, tier2) {
 		var isPosForWords = false;
 		var isGlossesForMorphemes = false;
+		var isMorphemesForWords = false;
+		var isWordsForGlosses = false;
+		var isGlossesForWords = false;
 		if (tierType == "pos for words") {
 			isPosForWords = true;
-		}
-		if (tierType == "glosses for morphemes") {
+		} else if (tierType == "glosses for morphemes") {
 			isGlossesForMorphemes = true;
 			tierType = "morphemes";
+		} else if (tierType == "morphemes for words") {
+			isMorphemesForWords = true;
+			tierType = "words";
+		} else if (tierType == "words for glosses") {
+			isWordsForGlosses = true;
+		} else if (tierType == "glosses for words") {
+			isGlossesForWords = true;
+			tierType = "words";
 		}
-		if (tierType.includes(" ") && !isGlossesForMorphemes) {
+		if (tierType.includes(" ") && !isGlossesForMorphemes && !isMorphemesForWords && !isGlossesForWords) {
 			var tokens = tierType.split(" ");
 			tierType = tokens[0];
 		}
 		var alignments = null;
-		if (igts2 != undefined || isPosForWords || isGlossesForMorphemes) {
+		if (igts2 != undefined || isPosForWords || isGlossesForMorphemes ||isMorphemesForWords || isGlossesForWords) {
 			if (isPosForWords) {
 				alignments = getPosForWordsAlignments(igts);
 			} else if (isGlossesForMorphemes) {
 				alignments = getGlossesForMorphemesAlignments(igts);
+			} else if (isMorphemesForWords) {
+				alignments = getMorphemesForWordsAlignments(igts);
+				//changed
+			} else if (isGlossesForWords) {
+				alignments = getGlossesForWordsAlignments(igts);
 			} else {
-				alignments = getAlignments(igts2, tier2);
+				if (isWordsForGlosses) {
+					alignments = getAlignments(igts2, "glossesW");
+				} else {
+					alignments = getAlignments(igts2, tier2);
+				}
 			}
 		}
 		var rowIndex = 0;
@@ -604,7 +651,12 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 			var matchObject = getMatchObject(igt);
 			if (isGlossesForMorphemes) {
 				matchObject = glossesForMorphemesMatchObject(matchObject);
-			} 
+			} else if (isMorphemesForWords) {
+				//get word match object
+				matchObject = morphemesForWordsMatchObject(matchObject);
+			} else if (isGlossesForWords) {
+				matchObject = glossesForWordsMatchObject(matchObject);
+			}
 			for (var j = 0; j < matchObject.length; j++) {
 				var row = $("<tr></tr>");
 				if (odd) {
@@ -647,6 +699,104 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 			odd = !odd;
 		}
 
+	}
+
+	function getGlossesForWordsAlignments(igts) {
+		var results = [];
+		for (var i = 0; i < igts.length; i++) {
+			var igt = igts[i];
+			var matchObject = getMatchObject(igt);
+			var glosses = getGlossesW(igt);
+			var currWord = matchObject[1].attributes.item;
+			var currWordIndex = 0;
+			var glossItemArray = [];
+			var glossItemArrayRow = [];
+			glossItemArray.push(glossItemArrayRow);
+			for (var j = 0; j < matchObject.length; j += 2) {
+				if (matchObject[j + 1].attributes.item != currWord) {
+					currWord = matchObject[j + 1].attributes.item;
+					currWordIndex++;
+					var newRow = [];
+					glossItemArray.push(newRow);
+				}
+				glossItemArray[currWordIndex].push(matchObject[j].attributes.item);
+			}
+			var igtRow = [];
+			for (var j = 0; j < glossItemArray.length; j++) {
+				var glossRow = glossItemArray[j];
+				var alignment = [];
+				for (var k = 0; k < glossRow.length; k++) {
+					var glossIndex = parseInt(glossRow[k].substring(2)) - 1;
+					var token = glosses[glossIndex];
+					alignment.push(token);
+				}
+				igtRow.push(alignment);
+			}
+			results.push(igtRow);
+		}
+		return results;
+	}
+
+	function glossesForWordsMatchObject(matchObject) {
+		var wordMatchObject = [];
+		wordMatchObject.push(matchObject[1]);
+		var previousWordNumber = matchObject[1].attributes.item;
+		for (var i = 3; i < matchObject.length; i += 2) {
+			if (matchObject[i].attributes.item != previousWordNumber) {
+				wordMatchObject.push(matchObject[i]);
+				previousWordNumber = matchObject[i].attributes.item;
+			}
+		}
+		return wordMatchObject;
+	}
+
+	function getMorphemesForWordsAlignments(igts) {
+		var results = [];
+		for (var i = 0; i < igts.length; i++) {
+			var igt = igts[i];
+			var matchObject = getMatchObject(igt);
+			var morphemes = getMorphemes(igt);
+			var currWord = matchObject[1].attributes.item;
+			var currWordIndex = 0;
+			var morphemeItemArray = [];
+			var morphemeItemArrayRow = [];
+			morphemeItemArray.push(morphemeItemArrayRow);
+			for (var j = 0; j < matchObject.length; j += 2) {
+				if (matchObject[j + 1].attributes.item != currWord) {
+					currWord = matchObject[j + 1].attributes.item;
+					currWordIndex++;
+					var newRow = [];
+					morphemeItemArray.push(newRow);
+				}
+				morphemeItemArray[currWordIndex].push(matchObject[j].attributes.item);
+			}
+			var igtRow = [];
+			for (var j = 0; j < morphemeItemArray.length; j++) {
+				var morphemeRow = morphemeItemArray[j];
+				var alignment = [];
+				for (var k = 0; k < morphemeRow.length; k++) {
+					var morphemeIndex = parseInt(morphemeRow[k].substring(1)) - 1;
+					var token = morphemes[morphemeIndex];
+					alignment.push(token);
+				}
+				igtRow.push(alignment);
+			}
+			results.push(igtRow);
+		}
+		return results;
+	}
+
+	function morphemesForWordsMatchObject(matchObject) {
+		var wordMatchObject = [];
+		wordMatchObject.push(matchObject[1]);
+		var previousWordNumber = matchObject[1].attributes.item;
+		for (var i = 3; i < matchObject.length; i += 2) {
+			if (matchObject[i].attributes.item != previousWordNumber) {
+				wordMatchObject.push(matchObject[i]);
+				previousWordNumber = matchObject[i].attributes.item;
+			}
+		}
+		return wordMatchObject;
 	}
 
 	function glossesForMorphemesMatchObject(matchObject) {
@@ -730,6 +880,8 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 				tokens = getPos(igt);
 			} else if (tier2 == "words") {
 				tokens = getWords(igt);
+			} else if (tier2 == "glossesW") {
+				tokens = getGlossesW(igt);
 			}
 			var nonMatchTierId = matchObject[0].attributes.tier;
 			var newMatchObject = [];
@@ -769,6 +921,8 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 		var index = null;
 		if (tierType == "words" || tierType == "glosses" || tierType == "morphemes") {
       		index = 1;
+      	} else if (tierType == "glossesW") {
+      		index = 2;
       	} else {  //pos
       		index = 5;
       	}  
@@ -782,10 +936,13 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 	}
 
 	function changeLabel() {
+
 		var firstLabel;
 		var secondLabel;
 		var firstInput;
 		var secondInput;
+		var thirdLabel;
+		var thirdInput;
 		var sel = $(this);
 		var div = sel.parent();
 		var children = div.children();
@@ -794,19 +951,35 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 			secondLabel = $(children[4]);
 			firstInput = $(children[3]);
 			secondInput = $(children[5]);
+			thirdLabel = $(children[6]);
+			thirdInput = $(children[7]);
 		} else {
 			firstLabel = $(children[3]);
 			secondLabel = $(children[5]);
 			firstInput = $(children[4]);
 			secondInput = $(children[6]);
+			thirdLabel = $(children[7]);
+			thirdInput = $(children[8]);
 		}
 		/*}*/
 		var option = sel.val();
 		var words = option.split(" ");
 		secondInput.val("");
 		firstInput.val("");
-		if (words.length > 1) {
-			if (option == "words for pos" || option == "morphemes for glosses") {
+		if (option == "languages") {
+			firstInput.css("display", "none");
+			firstLabel.css("display", "none");
+			secondInput.css("display", "none");
+			secondLabel.css("display", "none");
+			thirdLabel.css("display", "");
+			thirdInput.css("display", "");
+		} else if (words.length > 1) {
+			firstLabel.css("display", "");
+			firstInput.css("display", "");
+			thirdLabel.css("display", "none");
+			thirdInput.css("display", "none");
+			if (option == "words for pos" || option == "morphemes for glosses" ||
+					option == "words for glosses" || option == "words for morphemes") {
 				secondLabel.html(makeSingular(words[0]) + ":");
 			} else {
 				secondLabel.html(makeSingular(words[0]) + " (optional):");
@@ -816,10 +989,15 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg){
 			secondInput.css("display", "");
 			secondLabel.css("display", "");
 		} else {
+			thirdLabel.css("display", "none");
+			thirdInput.css("display", "none");
+			firstLabel.css("display", "");
+			firstInput.css("display", "");
 			firstLabel.html(makeSingular(words[0]) + ":");
 			secondInput.css("display", "none");
 			secondLabel.css("display", "none");
 		}
+
 	}
 
 
