@@ -181,6 +181,7 @@ function doneDeleting() {
 		var tier2 = null;
 		var path2 = null;
 		var path;
+		var enteredMorpheme;
 		if (idParameter == undefined) {
 			idParameter = "";
 		}
@@ -216,6 +217,9 @@ function doneDeleting() {
 			} else {
 				entered = input1.val();
 			}
+			if (tierType == "words for morphemes") {
+				enteredMorpheme = entered;
+			}
 			var ref = "";
 			if ((tier1 == "glosses" && tier2 == "morphemes") || (tier1 == "pos" && tier2 == "words") || 
 						(tier1 == "morphemes" && tier2 == "words")) {
@@ -235,7 +239,8 @@ function doneDeleting() {
 			 		"\"]/" + ref + "/(. | referent()[../@type=\"" + tier2 + "\"])") + idParameter;
 	    	}
 	    } else if (tierType == "languages") {
-	    	path = path= ".[metadata//dc:subject/text()=\"" + input3.val() + "\"]";
+	    	debugger;
+	    	path = ".[metadata//dc:subject/text()=\"" + input3.val() + "\"]" + idParameter;
 		} else {
 		 	var referent = "";
 			if (tierType == "words") {
@@ -256,14 +261,19 @@ function doneDeleting() {
 										"\"]" + referent + "/item[value()=\"" + entered + "\"]") + idParameter;
 		}
 
-		/*loadingAnimation();*/
 		var name = document.forms.searchForm.corpus.value;
 		if (path2 != null) {
 			$.when($.ajax("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path),
 					$.ajax("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path2)).done(function(a, b) {
 					var d = a[0];
 					var igts2 = b[0].igts;
-					var data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};
+					var data;
+					if (tierType == "words for morphemes") {
+						data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2, enteredMorpheme: enteredMorpheme};
+					} else {
+						data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};
+					}
+					/*var data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};*/
 					loadingImg.hide();
 					p.html("Number of Igts found: " + d.igt_count);
 					layeredSearch(data, name);
@@ -272,6 +282,7 @@ function doneDeleting() {
 			$.ajax({
 				url: "http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path,
 				success: function(result) {
+					debugger;
 					var data = {d: result, tierType: tierType, tier1: tier1, tier2: tier2, igts2: undefined};
 					loadingImg.hide();
 					p.html("Number of Igts found: " + result.igt_count);
@@ -317,6 +328,11 @@ function doneDeleting() {
 		label3.html("language:");
 		label3.css("display", "none");
 		label3.prop("for", "languageinput" + refineLevel);
+
+		//This is just until txt file is made.
+		var taiwanOpt = $("<option></option>").html("Taiwanese");
+		taiwanOpt.val("Taiwanese");
+		input3.append(taiwanOpt);
 
 		var add = $("<input/>").attr("type", "button");
 		var selLabel = $("<label></label>");
@@ -399,7 +415,7 @@ function doneDeleting() {
 		refineLoadingAnimation();
 		if (searchLevel == $("#searchbarsdiv").children().length - 1) {
 			var data = savedResultsData[savedResultsData.length - 1];
-			getData(data.d, data.tierType, data.tier1, data.tier2, data.igts2);
+			getData(data.d, data.tierType, data.tier1, data.tier2, data.igts2, data.enteredMorpheme);
 		} else {
 			var children = $($("#searchbarsdiv").children()[searchLevel]).children();
 			var currIgtIds = [];
@@ -430,6 +446,7 @@ function doneDeleting() {
 				var tierType = $(children[1]).val();
 				var input1 = $(children[3]);
 				var input2 = $(children[5]);
+				var input3 = $(children[7]);
 				if (tierType == "words for pos" && input1.val() == "" && input2.val() != "") {
 					tierType = "pos for words";
 				} else if (tierType == "morphemes for glosses" && input1.val() == "" && input2.val() != "") {
@@ -450,7 +467,7 @@ function doneDeleting() {
 				$("#submit").css("border-color", "darkgray");
 				$("#addButton").css("border-color", "darkgray");
 				$("#subButton").css("border-color", "darkgray");
-				lookForHelper(input1, input2, tierType, idParameter, p, loadingImg);
+				lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, input3);
 			} else {
 				p.html("Unable to perform this query due to lack of igts from previous search.");
 				loadResults();
@@ -482,30 +499,27 @@ function doneDeleting() {
 		
 		searchLevel++;
 		if (searchLevel == $("#searchbarsdiv").children().length - 1) {
-			getData(data.d, data.tierType, data.tier1, data.tier2, data.igts2);
+			getData(data.d, data.tierType, data.tier1, data.tier2, data.igts2, data.enteredMorpheme);
 		} else {
 			refineSearch();
 		}
 	}
 
-	function getData(d, tierType, tier1, tier2, igts2) {
+	function getData(d, tierType, tier1, tier2, igts2, enteredMorpheme) {
 		currIgts = d.igts; 
 	    if (d.igt_count > 0) {
 	    	downloadableIgtObject = d;
 	    	$("#downloaddiv").show();
 			setUpIgtList(d);
-		    if (tierType == "phrases") {
+		    if (tierType == "phrases" || tierType == "languages") {
 		    	createPhraseRows(currIgts);
 		    } else {
 				if (tier2 != null) {
-		    		createRows(currIgts,tierType, igts2, tier2);
+		    		createRows(currIgts,tierType, igts2, tier2, enteredMorpheme);
 		    	} else {
 		    		createRows(currIgts, tierType);
 		    	}
 		    }
-		    /*if (tierType.includes(" ")) {
-		    	tierType = tierType.split(" ")[0];
-		    }*/
 	      	var trHeader = $("<tr></tr>");
 	      	var th1 = $("<th></th>");
 	      	var th2 = $("<th></th>");
@@ -514,13 +528,45 @@ function doneDeleting() {
 	      	var matchesPerIgt = $("<th></th>");
 	      	matchesPerIgt.html("Matches per igt");
 	      	th1.append("igt Id");
-	      	th2.append(tierType);
+
+	      	var topP = $("<p></p>");
+	      	var bottomP = $("<p></p>");
+	      	topP.addClass("datadescription");
+	      	bottomP.addClass("datadescription");
+		    if (tierType == "words") {
+		    	 topP.html("words");
+		    	 th2.append(topP);
+		    } else if (tierType == "morphemes for glosses" || tierType == "glosses for morphemes") {
+		    	topP.html("Results top: morpheme");
+		    	bottomP.html("Results bottom: glosses");
+		    	th2.append(topP);
+		    	th2.append(bottomP);
+		    } else if (tierType == "morphemes for words" || tierType == "words for morphemes") {
+		    	topP.html("Results top: word");
+		    	bottomP.html("Results bottom: morpheme");
+		    	th2.append(topP);
+		    	th2.append(bottomP);
+		    } else if (tierType == "words for pos" || tierType == "pos for words") {
+		    	topP.html("Results top: word");
+		    	bottomP.html("Results bottom: part of speech");
+		    	th2.append(topP);
+		    	th2.append(bottomP);
+		    } else if (tierType == "languages") {
+		    	topP.html("phrases");
+		    	th2.append(topP);
+		    } else if (tierType == "words for glosses" || tierType == "glosses for words") {
+		    	topP.html("Results top: word");
+		    	bottomP.html("Results bottom: glosses");
+		    	th2.append(topP);
+		    	th2.append(bottomP);
+		    }
+
+
 	      	trHeader.append(th1);
 	      	trHeader.append(overflowL);
 	      	trHeader.append(th2);
 	      	trHeader.append(overflowR);
 	      	trHeader.append(matchesPerIgt);
-	      	// Change here
 	      	$("#sentences").prepend(trHeader);
 		}
 		loadResults();
@@ -584,7 +630,6 @@ function doneDeleting() {
 	    	listItems[i].setAttribute("id", "scrolllistitem" + i);
 	    }
 	    $("#loadingicon").hide();
-	    /*$("#num").show();*/
 	    if (listItems.length > 0) {
 	    	$("#igtlist").show();
 	    	$("#sentences").show();
@@ -600,7 +645,7 @@ function doneDeleting() {
 		$("#subButton").css("border-color", "");
 	}
 
-	function createRows(igts, tierType, igts2, tier2) {
+	function createRows(igts, tierType, igts2, tier2, enteredMorpheme) {
 		var isPosForWords = false;
 		var isGlossesForMorphemes = false;
 		var isMorphemesForWords = false;
@@ -678,7 +723,7 @@ function doneDeleting() {
 					highlightMatchMorphemes(div, matchObject, morphemeTier, mainSpanIndex, j);
 				}
 				if (alignments != null) {
-					addSecondTier(secondTd, alignments[i][j]);
+					addSecondTier(secondTd, alignments[i][j], enteredMorpheme);
 				}
 				mainSpanIndex++;
 				rowIndex++;
@@ -1034,7 +1079,7 @@ function doneDeleting() {
 		}
 	}
 
-	function addSecondTier(td, matchedTokens) {
+	function addSecondTier(td, matchedTokens, enteredMorpheme) {
 		var div = $("<div></div>");
 		var parentSpan = $("<span></span>");
 		for (var i = 0; i < matchedTokens.length; i++) {
@@ -1042,6 +1087,9 @@ function doneDeleting() {
 			span.addClass("matched");
 			span.css("margin-right", "2px");
 			span.html(matchedTokens[i]);
+			if (enteredMorpheme != undefined && matchedTokens[i] != enteredMorpheme) {
+				span.addClass("invisiblematch");
+			}
 			parentSpan.append(span);
 		}
 		div.append(parentSpan);
@@ -1181,7 +1229,7 @@ function doneDeleting() {
 		var contentTier = idMatcher(tiers, tierId);
 		var item = idMatcher(contentTier.items, itemId);
 		var content = item.text;
-		// put them into gw array NOTE: FACTOR THIS CODE OUT
+		// put them into gw array.
 		var items = glossWTier.items;
 		var glosses = [];
 		for (var i = 0; i < items.length; i++) {
@@ -1210,14 +1258,12 @@ function doneDeleting() {
   		$("#igtdisplay").show();
   		$("#back").show();
   		var id = this.getAttribute("class");
-  		// change here
   		igtSelected(document.getElementById("scroll" + id));
   		lengthen();	
   		$('html,body').scrollTop(0);
 	}
 
 	function createPhraseRows(igts) {
-		var tierType = $("#tiertype").val();
 		for (var i = 0; i < igts.length; i++) {
 			var igt = igts[i];
 			var row = $("<tr></tr>");
@@ -1225,10 +1271,20 @@ function doneDeleting() {
 			firstTd.html(igt.id);
 			var secondTd = $("<td></td>");
 			secondTd.html(getPhrase(igt));
+			var overflowL = $("<td></td>");
+			var overflowR = $("<td></td>");
+			var matchesPerIgtTd = $("<td></td>");
+			matchesPerIgtTd.html("1");
 			row.append(firstTd);
+			row.append(overflowL);
 			row.append(secondTd);
+			row.append(overflowR);
+			row.append(matchesPerIgtTd);
 			row.click({"igt": igt}, igtClick);
 			row.attr("class", "listitem" + i);
+			if (i % 2 == 0) {
+				row.css("background-color", "lightgray");
+			}
 			$("#sentences").append(row);
 		}
 	}
@@ -1350,8 +1406,6 @@ function doneDeleting() {
 	
 	
 	function centerSpans() {
-		// You dont need ids. Change this
-		// Also td has been changed to a div now.
 		var rows = $("#sentences").children();
 		for (var i = 0; i < rows.length - 1; i++) {
 

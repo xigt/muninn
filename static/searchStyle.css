@@ -422,4 +422,12 @@ select {
 
 }
 
+.invisiblematch {
+	visibility: hidden;
+}
+
+.datadescription {
+	margin: 0;
+}
+
 
