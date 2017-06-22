@@ -3,7 +3,9 @@
 	<head>
 		<title>Xigt Search</title>
 		<script src="../static/search.js" charset="utf-8"></script>
-		<link rel="stylesheet" type="text/css" href="../static/xigtviz.css"/>
+		
+		<!-- <link rel="stylesheet" type="text/css" href="../static/xigtviz.css"/> -->
+		<link rel="stylesheet" type="text/css" href="https://rawgit.com/xigt/xigtviz/master/xigtviz.css"/>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 		<script type="text/javascript">
@@ -32,13 +34,67 @@
 					    "default_content": "▨"
 					}
 		</script>
-  		<script src="../static/xigtviz.js" charset="utf-8"></script>
+  		<!-- <script src="../static/xigtviz.js" charset="utf-8"></script>
+  		<link rel="stylesheet" type="text/css" href="../static/searchStyle.css"> -->
+  		<script src="https://rawgit.com/xigt/xigtviz/master/xigtviz.js" charset="utf-8"></script>
   		<link rel="stylesheet" type="text/css" href="../static/searchStyle.css">
 	</head>
 
 	<body>
 		<div id="frame">
 			<h1 id="header">XIGT Search</h1>
+			<div id="helpdiv">
+				<input type="button" name="helpbutton" value="Help" id="helpbutton" />
+				<div id="helpinfo">
+					<h5>How to select corpus</h5>
+ 
+					<p>Select a corpus from the drop down menu in the top left corner with the label “Corpus”.</p>
+					 
+					<h5>How to choose a search type</h5>
+					 
+					<p>Select one of the options from the drop down menu with the label “Search for”.</p>
+					 
+					<h5>Different types of searches</h5>
+
+					<h6>Words</h6>
+					 
+					<p>The search type “words” requires a word to be entered into the text box that is labeled “word”. This search type searches the selected corpus for igts that contain the entered word.</p>
+					 
+					<h6>Morphemic glosses</h6>
+					 
+					<p>The search type morphemic glosses requires a gloss to be entered into the text box that is labeled “gloss” and/or a morpheme to be to be entered into the text box that is labeled “morpheme”. This search type searches the selected corpus for the igts that contain the entered gloss and/or entered morpheme. If both a morpheme and a gloss are entered, the morpheme and gloss must be aligned in the igt.</p>
+					 
+					<h6>Morphemes</h6>
+					 
+					<p>The search type morphemes requires a word to be entered into the text box that is labeled “word” and/or a morpheme to be to be entered into the text box that is labeled “morpheme”. This search type searches the selected corpus for the igts that contain the entered word and/or entered morpheme. If both a word and morpheme are entered, the word and morpheme must be aligned in the igt.</p>
+					 
+					<h6>Pos</h6>
+					 
+					<p>The search type pos requires a word to be entered into the text box that is labeled “word” and/or a part of speech to be to be entered into the text box that is labeled “pos”. This search type searches the selected corpus for the igts that contain the entered word and/or entered part of speech. If both a word and a part of speech are entered, the word and part of speech must be aligned in the igt.</p>
+					 
+					<h6>Phrases</h6>
+					 
+					<p>The search type “phrases” requires a phrase to be entered into the text box that is labeled “phrase”. This search type searches the selected corpus for igts that contain the entered phrase.</p>
+					 
+					<h6>Lexical glosses</h6>
+					 
+					<p>The search type lexical glosses requires a gloss to be entered into the text box that is labeled “gloss” and/or a word to be to be entered into the text box that is labeled “word”. This search type searches the selected corpus for the igts that contain the entered gloss and/or entered word. If both a gloss and word are entered, the word and gloss must be aligned in the igt.</p>
+					 
+					<h6>Languages</h6>
+					 
+					<p>The search type languages requires a language name to be selected from the the drop down menu labeled “language”. This search type searches the selected corpus for igts that contain the selected language name.</p>
+						 
+					<h5>How to add additional search constraints</h5>
+					 
+					<p>Press the green button with the text “Add query”. Pressing this button will add a new query row.</p>
+					 
+					<h5>How to remove search constraints</h5>
+					 
+					<p>Press the red button with the text “Remove queries”.</p>
+
+				</div>
+			</div>
+			
 			<div id="searcharea">		
 				<form id = "searchForm" onsubmit="event.preventDefault(); lookFor(); return false;">
 					<div id="firstformdiv">

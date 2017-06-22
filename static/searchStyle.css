@@ -430,4 +430,35 @@ select {
 	margin: 0;
 }
 
+#helpdiv {
+	text-align: right;
+	padding: 5px;
+	background-color: #ebebe0;
+}
+
+#helpbutton:hover {
+	cursor: pointer;
+}
+
+#helpinfo {
+	margin: 0;
+	text-align: left;
+	padding-left: 10px;
+	padding-right: 10px;
+	display: none;
+
+}
+
+#helpinfo h6 {
+	font-style: italic;
+}
+
+#helpinfo p {
+	font-size: 13px;
+}
+
+#helpinfo h5 {
+	color: #333399;
+}
+
 

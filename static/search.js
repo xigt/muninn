@@ -1,6 +1,9 @@
 (function() {
 	'use strict';
 
+	// Loads corpora and their igt counts into the select element with id corpus
+	// Attaches click event handlers to buttons.
+	// Alphabetizes options in the select element with id corpus.
 	window.onload = function () {
 		d3.xhr("http://odin.xigt.org/v1/corpora")
         .mimeType("application/json")
@@ -17,8 +20,8 @@
                 })
    
                 .attr("value", function(d){return d.id;});
-                $("#xmldownloadbutton").click(xmlDownload);
-                $("#jsondownloadbutton").click(jsonDownload);
+                $("#xmldownloadbutton").click(download);
+                $("#jsondownloadbutton").click(download);
                 $("#selectallbutton").click(selectAll);
                 $("#back").click(goBack);
                 $("#searchbarsdiv").prepend(addExtraSearchDiv);
@@ -38,35 +41,46 @@
                 
                 sortCorpusOptions();
                 $("#corpus").change(userChangedCorpus);
+                $("#helpbutton").click(showHelpInfo);
                 
         });     
 	};	
 })();
-
+// Keeps track of the most recently clicked igt
 var currListItem = null;
+// Keeps track of previous results by storing them as objects in an
+// array. Each object holds data that can be used to display a table
+// with a snippet of information for all matched igts in  the search.
 var savedResultsData = [];
+// Keeps track of previous query paths.
 var savedMainQueryPaths = [];
+// Keeps track of which query row the search begins on. It is based on 0 based indexing
+// where the first row is represented by searchLevel equaling zero, the second row is 
+// repersented by searchLevel equaling one, the third row is repersented by searchLevel equaling two, etc... 
 var searchLevel = 0;
+// When true, the user is currently deleting queries.
 var currDeleting = false;
-var downloadableIgtObject;
+// Stores the query path of the most current query.
 var currentSavedQueryPath;
 
-function jsonDownload() {
-	download("json", "download");
-	
-}
+var serverURL = "http://odin.xigt.org/v1/corpora/";
 
-function xmlDownload() {
-	download("xml", "download");
-	
-}
-
-function download(dataType, filename) {
+// Downloads a xml or json file that contains all matched igts of most recent search.
+// If download xml button is clicked a xml file is downloaded.
+// If download json button is clicked a json file is downloaded.
+function download() {
+	var dataType;
+	if ($(this).attr("id") == "xmldownloadbutton") {
+		dataType = "xml";
+	} else {
+		dataType = "json";
+	}
 	var element = document.createElement('a');
+
 	
 	var xmlJsonDownloadInfo = currentSavedQueryPath;
 	element.setAttribute('href', xmlJsonDownloadInfo.url + "." + dataType + "?id=" + xmlJsonDownloadInfo.ids);
-	element.setAttribute('download', filename);
+	element.setAttribute('download', "download");
 
 	element.style.display = 'none';
 	document.body.appendChild(element);
@@ -77,7 +91,8 @@ function download(dataType, filename) {
 }
 
 
-
+// Selects all checkboxes that are used by the user to indicate which 
+// query they want to delete.
 function selectAll() {
 	$("input[name='subtractcheckbox']").prop("checked", true);
 	checkChanged();
@@ -86,6 +101,8 @@ function selectAll() {
 	$("#selectallbutton").click(deselectAll);
 }
 
+// Deselects all checkboxes that are used by the user to indicate which 
+// query they want to delete.
 function deselectAll() {
 	$("input[name='subtractcheckbox']").prop("checked", false);
 	checkChanged();
@@ -94,11 +111,19 @@ function deselectAll() {
 	$("#selectallbutton").click(selectAll);
 }
 
+// Function is triggered when user changes corpus.
+// All previously saved results are deleted and the next search
+// will begin from first row.
 function userChangedCorpus() {
 	searchLevel = 0;
 	deleteOldSavedData();
+	addLanguages();
 }
 
+// Places checkboxes next to each search bar row.
+// These checkboxes will let the user indicate which 
+// query they want to delete.
+// The add query and search button are disabled.
 function subtractQueries() {
 	$("#selectalldiv").show();
 	currDeleting = true;
@@ -124,6 +149,9 @@ function subtractQueries() {
 	subButton.click(doneDeleting);
 }
 
+// If one or more of the checkboxes that lets users indicate which query they want to delete
+// is checked, then the text of the button with id subButton is changed to "Delete and Search".
+// Otherwise, the the button's text will be "Done".
 function checkChanged() {
 	var subButton = $("#subButton");
 	if ($("input[name='subtractcheckbox']:checked").length > 0) {
@@ -133,6 +161,10 @@ function checkChanged() {
 	}
 }
 
+// Removes all search bar rows whose checkboxes was checked.
+// Also removes saved query results data associated with those rows.
+// If the undeleted search bar rows are in a new order, A new query is triggered.
+// The search and add query buttons are reenabled.
 function doneDeleting() {
 	$("#selectalldiv").hide();
 	$("#selectallbutton").val("Select All")
@@ -175,126 +207,142 @@ function doneDeleting() {
 
 }
 
-//creates query, starts laoding animation
-	function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, input3) {
-		var tier1 = null;
-		var tier2 = null;
-		var path2 = null;
-		var path;
-		var enteredMorpheme;
-		if (idParameter == undefined) {
-			idParameter = "";
+// input1 is the first input element of type text, of the query row whose input fields are currently
+// being used to create a get request.
+// input2 is the second input element of type text, of the query row whose input fields are currently
+// being used to create a get request.
+// input3 is the select element that contains the languages found in the selected corpus.
+// tierType is a string that represents the search type that the user has selected.
+// idParameter is a string that keeps track of the ids of the most recently matched igts.
+// p is a paragraph element that is directly below the query row whose input fields are currently
+// being used to create a get request.
+// loadingImg is an image element of an animated loading icon in the query row whose input fields are
+// currently being used to create a get request.
+//
+// A get request url is created using tierType, idParameter, and one or more of the following; 
+// input1, input2, and input3. The get request is then sent to the server.
+// Once the requested data is received, it is stored.
+// loadingImg is then hid and p's html is changed to let the user know how much igt matches were
+// found.
+function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, input3) {
+	var tier1 = null;
+	var tier2 = null;
+	var path2 = null;
+	var path;
+	var enteredMorpheme;
+	if (idParameter == undefined) {
+		idParameter = "";
+	}
+	
+	if (tierType == "pos for words") {
+		var ref = "referrer()[../@type=pos]";
+		path = encodeURIComponent("tier[@type=\"" + "words" + "\"]/item[value()=\"" + input2.val() +
+		 		"\"]/" + ref) + idParameter;
+	} else if (tierType == "glosses for morphemes") {
+		ref = "referrer()[../@type=glosses]";
+		path = encodeURIComponent("tier[@type=\"morphemes\"]/item[value()=\"" + input2.val() +
+		 		"\"]/" + ref + "/(. | referent()[../@type=\"morphemes\"])") + idParameter;
+	} else if (tierType == "morphemes for words") {
+		ref = "referrer()[../@type=morphemes]";
+		path = encodeURIComponent("tier[@type=\"words\"]/item[value()=\"" + input2.val() +
+		 		"\"]/" + ref + "/(. | referent()[../@type=\"words\"])") + idParameter;
+	} else if (tierType == "glosses for words") {
+		ref = "referrer()[../@type=glosses]";
+		path = encodeURIComponent("tier[@type=\"words\"]/item[value()=\"" + input2.val() +
+		 		"\"]/" + ref + "/(. | referent()[../@type=\"words\"])") + idParameter;
+	} else if (tierType.includes(" ")) {
+		var tokens = tierType.split(" ");
+		var tier1 = tokens[0];
+		var tier2 = tokens[tokens.length - 1];
+		/*tierType = tier1;*/
+		var primaryTierValue = "";
+		if (input2.val() != "") {
+			primaryTierValue = "[value()=\"" + input2.val() + "\"]";
+		}
+		var entered = "";
+		if (tier2 == "pos") {
+			entered = input1.val().toUpperCase();
+		} else {
+			entered = input1.val();
+		}
+		if (tierType == "words for morphemes") {
+			enteredMorpheme = entered;
+		}
+		var ref = "";
+		if ((tier1 == "glosses" && tier2 == "morphemes") || (tier1 == "pos" && tier2 == "words") || 
+					(tier1 == "morphemes" && tier2 == "words")) {
+			ref = "referrer()" + primaryTierValue + "[../@type=" + tier1 + "]";
+		} else {
+			ref = "referent()[../@type=\"" + tier1 + "\"]" + primaryTierValue;
 		}
 		
-		if (tierType == "pos for words") {
-			var ref = "referrer()[../@type=pos]";
-			path = encodeURIComponent("tier[@type=\"" + "words" + "\"]/item[value()=\"" + input2.val() +
-			 		"\"]/" + ref) + idParameter;
-		} else if (tierType == "glosses for morphemes") {
-			ref = "referrer()[../@type=glosses]";
-			path = encodeURIComponent("tier[@type=\"morphemes\"]/item[value()=\"" + input2.val() +
-			 		"\"]/" + ref + "/(. | referent()[../@type=\"morphemes\"])") + idParameter;
-		} else if (tierType == "morphemes for words") {
-			ref = "referrer()[../@type=morphemes]";
-			path = encodeURIComponent("tier[@type=\"words\"]/item[value()=\"" + input2.val() +
-			 		"\"]/" + ref + "/(. | referent()[../@type=\"words\"])") + idParameter;
-		} else if (tierType == "glosses for words") {
-			ref = "referrer()[../@type=glosses]";
-			path = encodeURIComponent("tier[@type=\"words\"]/item[value()=\"" + input2.val() +
-			 		"\"]/" + ref + "/(. | referent()[../@type=\"words\"])") + idParameter;
-		} else if (tierType.includes(" ")) {
-			var tokens = tierType.split(" ");
-			var tier1 = tokens[0];
-			var tier2 = tokens[tokens.length - 1];
-			/*tierType = tier1;*/
-			var primaryTierValue = "";
-			if (input2.val() != "") {
-				primaryTierValue = "[value()=\"" + input2.val() + "\"]";
-			}
-			var entered = "";
-			if (tier2 == "pos") {
-				entered = input1.val().toUpperCase();
-			} else {
-				entered = input1.val();
-			}
-			if (tierType == "words for morphemes") {
-				enteredMorpheme = entered;
-			}
-			var ref = "";
-			if ((tier1 == "glosses" && tier2 == "morphemes") || (tier1 == "pos" && tier2 == "words") || 
-						(tier1 == "morphemes" && tier2 == "words")) {
-				ref = "referrer()" + primaryTierValue + "[../@type=" + tier1 + "]";
-			} else {
-				ref = "referent()[../@type=\"" + tier1 + "\"]" + primaryTierValue;
-			}
-			
-			path = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
-			 		"\"]/" + ref) + idParameter;
-			if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
-					(tier1 == "words" && tier2 == "morphemes") || (tier1 == "words" && tier2 == "glosses"))) {
-	    		path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
-			 		"\"]/" + ref + "/(. | referrer()[../@type=\"" + tier2 + "\"])") + idParameter;
-	    	} else {
-	    		path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
-			 		"\"]/" + ref + "/(. | referent()[../@type=\"" + tier2 + "\"])") + idParameter;
-	    	}
-	    } else if (tierType == "languages") {
-	    	debugger;
-	    	path = ".[metadata//dc:subject/text()=\"" + input3.val() + "\"]" + idParameter;
-		} else {
-		 	var referent = "";
-			if (tierType == "words") {
-				referent =  "[referent()/@type=\"phrases\"]";
-			} else if (tierType == "glosses") {
-				referent = "[referent()/@type=\"morphemes\"]";
-			} else if (tierType == "pos") {
-				referent = " [referent()/@type=\"words\"]";
-			}
-
-			var entered = "";
-			if (tierType == "pos") {
-				entered = input1.val().toUpperCase();
-			} else {
-				entered = input1.val();
-			}
-			path = encodeURIComponent("tier[@type=\""+  tierType  + 
-										"\"]" + referent + "/item[value()=\"" + entered + "\"]") + idParameter;
+		path = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
+		 		"\"]/" + ref) + idParameter;
+		if ((tier2 != null) && ((tier1 == "morphemes" && tier2 == "glosses") || (tier1 == "words" && tier2 == "pos") || 
+				(tier1 == "words" && tier2 == "morphemes") || (tier1 == "words" && tier2 == "glosses"))) {
+    		path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
+		 		"\"]/" + ref + "/(. | referrer()[../@type=\"" + tier2 + "\"])") + idParameter;
+    	} else {
+    		path2 = encodeURIComponent("tier[@type=\"" + tier2 + "\"]/item[value()=\"" + entered +
+		 		"\"]/" + ref + "/(. | referent()[../@type=\"" + tier2 + "\"])") + idParameter;
+    	}
+    } else if (tierType == "languages") {
+    	path = ".[metadata//dc:subject/text()=\"" + input3.val() + "\"]" + idParameter;
+	} else {
+	 	var referent = "";
+		if (tierType == "words") {
+			referent =  "[referent()/@type=\"phrases\"]";
+		} else if (tierType == "glosses") {
+			referent = "[referent()/@type=\"morphemes\"]";
+		} else if (tierType == "pos") {
+			referent = " [referent()/@type=\"words\"]";
 		}
 
-		var name = document.forms.searchForm.corpus.value;
-		if (path2 != null) {
-			$.when($.ajax("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path),
-					$.ajax("http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path2)).done(function(a, b) {
-					var d = a[0];
-					var igts2 = b[0].igts;
-					var data;
-					if (tierType == "words for morphemes") {
-						data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2, enteredMorpheme: enteredMorpheme};
-					} else {
-						data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};
-					}
-					/*var data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};*/
-					loadingImg.hide();
-					p.html("Number of Igts found: " + d.igt_count);
-					layeredSearch(data, name);
-			});
+		var entered = "";
+		if (tierType == "pos") {
+			entered = input1.val().toUpperCase();
 		} else {
-			$.ajax({
-				url: "http://odin.xigt.org/v1/corpora/" + name + "/igts?path=" + path,
-				success: function(result) {
-					debugger;
-					var data = {d: result, tierType: tierType, tier1: tier1, tier2: tier2, igts2: undefined};
-					loadingImg.hide();
-					p.html("Number of Igts found: " + result.igt_count);
-					layeredSearch(data, name);
-				}
-			});
+			entered = input1.val();
 		}
-    		return false;
+		path = encodeURIComponent("tier[@type=\""+  tierType  + 
+									"\"]" + referent + "/item[value()=\"" + entered + "\"]") + idParameter;
 	}
 
+	var name = document.forms.searchForm.corpus.value;
+	if (path2 != null) {
+		$.when($.ajax(serverURL + name + "/igts?path=" + path),
+				$.ajax(serverURL + name + "/igts?path=" + path2)).done(function(a, b) {
+				var d = a[0];
+				var igts2 = b[0].igts;
+				var data;
+				if (tierType == "words for morphemes") {
+					data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2, enteredMorpheme: enteredMorpheme};
+				} else {
+					data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};
+				}
+				/*var data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};*/
+				loadingImg.hide();
+				p.html("Number of Igts found: " + d.igt_count);
+				layeredSearch(data, name);
+		});
+	} else {
+		$.ajax({
+			url: serverURL + name + "/igts?path=" + path,
+			success: function(result) {
+				var data = {d: result, tierType: tierType, tier1: tier1, tier2: tier2, igts2: undefined};
+				loadingImg.hide();
+				p.html("Number of Igts found: " + result.igt_count);
+				layeredSearch(data, name);
+			}
+		});
+	}
+		return false;
+}
+	
+	// This is used to give the fields in the query rows unique ids.
 	var refineLevel = 0;
 
+	// Creates a query row.
 	function addExtraSearchDiv(){
 		refineLevel++;
 		var select = $("<select></select>");
@@ -323,6 +371,7 @@ function doneDeleting() {
 		var input3 = $("<select></select>");
 		input3.css("display", "none");
 		input3.attr("id", "languageinput" + refineLevel);
+		input3.addClass("languageinput");
 		input3.change(userInputChanged);
 		var label3 = $("<label></label>");
 		label3.html("language:");
@@ -330,9 +379,9 @@ function doneDeleting() {
 		label3.prop("for", "languageinput" + refineLevel);
 
 		//This is just until txt file is made.
-		var taiwanOpt = $("<option></option>").html("Taiwanese");
+		/*var taiwanOpt = $("<option></option>").html("Taiwanese");
 		taiwanOpt.val("Taiwanese");
-		input3.append(taiwanOpt);
+		input3.append(taiwanOpt);*/
 
 		var add = $("<input/>").attr("type", "button");
 		var selLabel = $("<label></label>");
@@ -367,6 +416,10 @@ function doneDeleting() {
 		return div;
 	}
 
+	// This is triggered when a query row's fields are changed.
+	// Changes the row the next search will begin on to the changed query row (Unless the
+	// next search is already begining at a query row above this changed row).
+	// Deletes previous query results of edited row and the rows below it.
 	function userInputChanged() {
 		var form =  $(this);
 		var div = form.parent();
@@ -387,6 +440,8 @@ function doneDeleting() {
 		} 
 	}
 
+	// Deletes previous query results of rows at or below the row that is represented
+	// by  the global variable searchLevel.
 	function deleteOldSavedData() {
 		smallEnough = false;
 		while (!smallEnough) {
@@ -399,7 +454,7 @@ function doneDeleting() {
 		}
 	}
 
-	function hideExtraSearchDiv() {
+	/*function hideExtraSearchDiv() {
 		$(this).val("Search in found igts");
 		var children = $(".refinebuttoncontainer").children();
 		if (children[2] != undefined) {
@@ -407,8 +462,34 @@ function doneDeleting() {
 		}
 		$(this).unbind("click");
 		$(this).click(addExtraSearchDiv);
-	}
+	}*/
 
+	// Provides the following parameters to the method lookForHelper:
+	// input1, input2, tierType, idParameter, p, loadingImg, and input3.
+	// These parameters are defined below:
+	//
+	// input1 is the first input element of type text, of the query row whose input fields are currently
+	// being used to create a get request.
+	// input2 is the second input element of type text, of the query row whose input fields are currently
+	// being used to create a get request.
+	// input3 is the select element that contains the languages found in the user selected corpus. It is also
+	// in the query row whose input fields are currently being used to create a get request.
+	// tierType is a string that represents the search type that the user has selected for the query row
+	// whose input fields are currently being used to create a get request.
+	// idParameter is a string that contains the ids of the most recently matched igts.
+	// p is a paragraph element that is directly below the query row whose input fields are currently
+	// being used to create a get request.
+	// loadingImg is an image element of an animated loading icon in the query row whose input fields are
+	// currently being used to create a get request.
+	//
+	// If no new queries are added and previous ones are unchanged, the get request does not happen. Instead
+	// the most recent search results are redisplayed. 
+	//
+	// If the query row before the
+	// query row whose input fields are currently being used to create a get request
+	// returned no matches, no server request happens and the user is notified why.
+	//
+	// The add and subtract query buttons are disabled.
 	function refineSearch() {
 		$("#downloaddiv").hide();
 		$("#submit").prop("disabled", true);
@@ -479,6 +560,15 @@ function doneDeleting() {
 		}	
 	}
 
+	// data is an object that stores the results and search type of the most recently
+	// searched query.
+	// name is the id of the corpus that was selected by the user in the most recently
+	// searched query.
+	// The function puts the parameter data into the global array savedResultsData as a 
+	// way to keep track of previous queries and their results.
+	// Saves the GET request url path of the most recently searched query into the global
+	// object xmlJsonDownloadInfo. The matched igts' ids are also stored in the global
+	// variable xmlJsonDownloadInfo. 
 	function layeredSearch(data, name) {
 		savedResultsData.push(data);
 		var igts = data.d.igts;
@@ -491,7 +581,7 @@ function doneDeleting() {
 			}
 		}
 		var xmlJsonDownloadInfo = {
-			url: "http://odin.xigt.org/v1/corpora/" + name,
+			url: serverURL + name,
 			ids: ids
 		}
 		savedMainQueryPaths.push(xmlJsonDownloadInfo);
@@ -505,10 +595,26 @@ function doneDeleting() {
 		}
 	}
 
+	// d is an object that contains the amount of igts that were matched by a query and also
+	// those igts.
+	// tierType is a string that represents the search type of the query that was used to make d
+	// and igts2.
+	// tier1 is a string that represents the type of data that will be displayed on
+	// the top row.
+	// tier2 represents a string that represents the type of data that will be displayed on
+	// the bottom row.
+	// igts2 is an array the stores the same igts of d however, their metadata contains
+	// the aligned tokens that will be displayed in the bottom row.
+	// enteredMorpheme is the searched for morpheme in the morpheme query.
+	//
+	// Adds list items to the list with id igt_id.
+	// Each list item corresponds to a matched igt's id.
+	// Each list item when clicked displays more information
+	// about the igt whose id the clicked list item displays.
+	// Creates rows for the table with id "sentences".
 	function getData(d, tierType, tier1, tier2, igts2, enteredMorpheme) {
 		currIgts = d.igts; 
 	    if (d.igt_count > 0) {
-	    	downloadableIgtObject = d;
 	    	$("#downloaddiv").show();
 			setUpIgtList(d);
 		    if (tierType == "phrases" || tierType == "languages") {
@@ -573,6 +679,10 @@ function doneDeleting() {
 		centerSpans();
 	}
 
+	// Adds list items to the list with id igt_id.
+	// Each list item corresponds to a matched igt's id.
+	// Each list item when clicked displays more information
+	// about the igt whose id the clicked list item displays.
 	function setUpIgtList(d) {
 		d3.select("#igt_id")
 	      .selectAll("li")
@@ -590,31 +700,13 @@ function doneDeleting() {
 		     });
 	}
 
-	function loadingAnimation() {
-		d3.select("#num").selectAll("p").remove();
-		d3.select("#igt_id").selectAll("li").remove();
-		d3.select("#sentences").selectAll("tr").remove();
-
-		var button = $("#refinebutton0");
-		$(button).val("Search in found igts");
-		button.unbind("click", hideExtraSearchDiv);
-		button.click(addExtraSearchDiv);
-
-		$(".refinebuttoncontainer").hide();
-		var children = $(".refinebuttoncontainer").children();
-		if (children[2] != undefined) {
-			$(children[2]).remove();
-		}
-		$("#igt").html("");
-		$("#num").hide();
-		$("#sentences").hide();
-		$("#igtdisplay").hide();
-		$("#back").hide();
-		$("#loadingicon").show();
-	}
-
+	// Clears rows from table with id "sentences".
+	// Clears list items from list with id "igt_id".
+	// Clears the indepth igt display area with id "igt".
+	// Hides indepth igt display area.
+	// Shows loading animation to user.
 	function refineLoadingAnimation() {
-		d3.select("#num").selectAll("p").remove();
+		/*d3.select("#num").selectAll("p").remove();*/
 		d3.select("#igt_id").selectAll("li").remove();
 		d3.select("#sentences").selectAll("tr").remove();
 		$("#igt").html("");
@@ -624,6 +716,8 @@ function doneDeleting() {
 		$("#loadingicon").show();
 	}
 
+	// Ends loading animation and allows user to see results.
+	// Enables submit, add query, and subtract query buttons.
 	function loadResults() {
 		var listItems = $("#igt_id li");
 	    for (var i = 0; i < listItems.length; i++) {
@@ -645,6 +739,17 @@ function doneDeleting() {
 		$("#subButton").css("border-color", "");
 	}
 
+	// igts is an array that contains the igts that were matched by a query.
+	// tierType is a string that represents the search type that was used to create igts and igts2.
+	// tier1 is a string that represents the type of data that will be displayed on
+	// the top row.
+	// tier2 represents a string that represents the type of data that will be displayed on
+	// the bottom row.
+	// igts2 is an array the stores the same igts of parameter igts however, its metadata contains
+	// the aligned tokens that will be displayed in the bottom row.
+	// enteredMorpheme is the searched for morpheme in the morpheme query.
+	//
+	// Creates rows for the table with id "sentences".
 	function createRows(igts, tierType, igts2, tier2, enteredMorpheme) {
 		var isPosForWords = false;
 		var isGlossesForMorphemes = false;
@@ -746,6 +851,12 @@ function doneDeleting() {
 
 	}
 
+	// Parameter igts is an array of igt objects. These igt objects' metadata will be used to create
+	// the bottom display sections of the rows from the table with id "sentences". This function is only
+	// used when the user chooses the query lexical glosses and does not enter a gloss.
+	// Returns a multidimensional array that stores the glosses that will be displayed in the
+	// bottom display sections of the rows of the table that has the id "sentences" .
+	// The glosses will be displayed beneath their aligned words.
 	function getGlossesForWordsAlignments(igts) {
 		var results = [];
 		for (var i = 0; i < igts.length; i++) {
@@ -782,6 +893,10 @@ function doneDeleting() {
 		return results;
 	}
 
+	// matchObject is an object that contains the gloss and word ids that caused
+	// the igt that it is associated with to be a match in a query.
+	// 
+	// Returns a new matchObject that removes the matched gloss ids.
 	function glossesForWordsMatchObject(matchObject) {
 		var wordMatchObject = [];
 		wordMatchObject.push(matchObject[1]);
@@ -795,6 +910,12 @@ function doneDeleting() {
 		return wordMatchObject;
 	}
 
+	// Parameter igts is an array of igt objects. These igt objects' metadata will be used to create
+	// the bottom display sections of the rows from the table with id "sentences". This function is only
+	// used when the user chooses the query morphemes and does not enter a morpheme.
+	// Returns a multidimensional array that stores the morphemes that will be displayed in the
+	// bottom display sections of the rows of the table that has the id "sentences".
+	// The morphemes will be displayed beneath their aligned words.
 	function getMorphemesForWordsAlignments(igts) {
 		var results = [];
 		for (var i = 0; i < igts.length; i++) {
@@ -831,6 +952,10 @@ function doneDeleting() {
 		return results;
 	}
 
+	// matchObject is an object that contains the morpheme and word ids that caused
+	// the igt that it is associated with to be a match in a query.
+	// 
+	// Returns a new matchObject that removes the matched morpheme ids.
 	function morphemesForWordsMatchObject(matchObject) {
 		var wordMatchObject = [];
 		wordMatchObject.push(matchObject[1]);
@@ -844,6 +969,10 @@ function doneDeleting() {
 		return wordMatchObject;
 	}
 
+	// matchObject is an object that contains the gloss and morpheme ids that caused
+	// the igt that it is associated with to be a match in a query.
+	// 
+	// Returns a new matchObject that removes the matched gloss ids.
 	function glossesForMorphemesMatchObject(matchObject) {
 		var morphemeMatchObject = [];
 		morphemeMatchObject.push(matchObject[1]);
@@ -857,6 +986,12 @@ function doneDeleting() {
 		return morphemeMatchObject;
 	}
 
+	// Parameter igts is an array of igt objects. These igt objects' metadata will be used to create
+	// the bottom display sections of the rows from the table with id "sentences". This function is only
+	// used when the user chooses the query glosses and does not enter a gloss.
+	// Returns a multidimensional array that stores the glosses that will be displayed in the
+	// bottom display sections of the rows of the table that has the id "sentences".
+	// The glosses will be displayed beneath their aligned morpheme.
 	function getGlossesForMorphemesAlignments(igts) {
 		var results = [];
 		for (var i = 0; i < igts.length; i++) {
@@ -893,6 +1028,12 @@ function doneDeleting() {
 		return results;
 	}
 
+	// Parameter igts is an array of igt objects. These igt objects' metadata will be used to create
+	// the bottom display sections of the rows from the table with id "sentences". This function is only
+	// used when the user chooses the query pos and does not enter a pos.
+	// Returns a multidimensional array that stores the poss (plural) that will be displayed in the
+	// bottom display sections of the rows of the table that has the id "sentences".
+	// The poss (plural) will be displayed beneath their aligned word.
 	function getPosForWordsAlignments(igts) {
 		var results = [];
 		for (var i = 0; i < igts.length; i++) {
@@ -911,6 +1052,14 @@ function doneDeleting() {
 		return results;
 	}
 
+	// Parameter igts is an array of igt objects. These igt objects' metadata will be used to create
+	// the bottom display sections of the rows from the table with id "sentences". The parameter tier2
+	// is the type of data (Ex. morpheme, gloss, word, etc...) that will go in the bottom display section
+	// of the rows from the table with id "sentences". 
+	// Returns a multidimensional array that stores the tokens whose type will be specified by tier2.
+	// These tokens will be will be displayed in the
+	// bottom display sections of the rows of the table that has the id "sentences".
+	// These tokens will be displayed with their alignments.
 	function getAlignments(igts, tier2) {
 		var results = [];
 		for (var i = 0; i < igts.length; i++) {
@@ -962,6 +1111,10 @@ function doneDeleting() {
 		return results;
 	}
 
+	// matchObject is an object that stores the ids of the items that were matched in an igt from
+	// a query.
+	// tierType specifies the type of item that is stored by the matchObject.
+	// Returns an array that contains the numbers of the matched items.
 	function getMatchedItemNumbers(matchObject, tierType) {
 		var index = null;
 		if (tierType == "words" || tierType == "glosses" || tierType == "morphemes") {
@@ -980,8 +1133,9 @@ function doneDeleting() {
 		return matchedItemNumbers;
 	}
 
+	// Changes labels on text boxes when a different search type is selected and/or makes forms
+	// like the dropdown language select element and second text box disappear/appear.
 	function changeLabel() {
-
 		var firstLabel;
 		var secondLabel;
 		var firstInput;
@@ -1012,6 +1166,7 @@ function doneDeleting() {
 		secondInput.val("");
 		firstInput.val("");
 		if (option == "languages") {
+			addLanguages(thirdInput);
 			firstInput.css("display", "none");
 			firstLabel.css("display", "none");
 			secondInput.css("display", "none");
@@ -1045,8 +1200,9 @@ function doneDeleting() {
 
 	}
 
-
-
+	// type is string.
+	// type is a type of item in an igt that is in its plural form.
+	// Returns type in its singular form.
 	function makeSingular(type) {
 		if (type == "words" || type == "morphemes" || type == "phrases" || type == "translations") {
 			type = type.substring(0, type.length - 1);
@@ -1056,7 +1212,7 @@ function doneDeleting() {
 		return type;
 	}
 
-	
+	// Sorts the options in the drop down menu that lets a user choose a corpus.
 	function sortCorpusOptions() {
 		var corpusSel = $("#corpus");
 		var corpusOpts = corpusSel.children();
@@ -1079,6 +1235,16 @@ function doneDeleting() {
 		}
 	}
 
+	// td is a table data element in a row in the table with id "sentences".
+	// td is the table data element that is used to show the user what item(s)
+	// in the igt matched the search results.
+	// matchedTokens is a multi-dimensional array that contains string representations of
+	// items that were matched by the users query. These items are aligned to the other
+	// matched item(s) that will be displayed above them in the parameter td.
+	// enteredMorpheme is the searched for morpheme in the morpheme query.
+	//
+	// The items in the array matchedTokens are displayed in parameter td right below the other matched item(s)
+	// that are of a different type. These other matched items and the items in matchedTokens are aligned in the igts.
 	function addSecondTier(td, matchedTokens, enteredMorpheme) {
 		var div = $("<div></div>");
 		var parentSpan = $("<span></span>");
@@ -1096,6 +1262,10 @@ function doneDeleting() {
 		td.append(div);
 	}
 
+	// liTag is a clicked on list item element in the list with the id "igt_id".
+	// Adds the "selected" class to liTag and stores its unique id in the global
+	// variable currListItem to keep track of the current selected list item. The old
+	// selected list item's (if there is any) "selected" class is removed.
 	function igtSelected(liTag) {
 		if (currListItem != null) {
 			$("#" + currListItem).removeClass("selected");
@@ -1104,9 +1274,11 @@ function doneDeleting() {
 		currListItem = liTag.getAttribute("id");
 	}
 
+	// igt is any igt object.
+	// Returns parameter igt's phrase item's string representation.
 	function getPhrase(igt) {
 		var tiers = igt.tiers;
-		var phraseTier = findTier(tiers, "phrases");
+		var phraseTier = idMatcher(tiers, "p");
 		if (phraseTier.items[0].text != undefined) {
 			return igt.id + " " + phraseTier.items[0].text;
 		} else {
@@ -1118,8 +1290,9 @@ function doneDeleting() {
 		}
 	}
 
-	// Get rid of this you can just use idMatcher
-	function findTier(tiers, type, id) {
+	// tiers is the array in an igt object that is accessed by the key "tiers".
+	// 
+	/*function findTier(tiers, type, id) {
 		var found = false;
 		var position = 0;
 		var foundTier = null;
@@ -1138,8 +1311,12 @@ function doneDeleting() {
 			position++;
 		}
 		return foundTier;
-	}
+	}*/
 
+	// arr is an array that contains objects with an id property.
+	// id is a string that represents an id.
+	// Searches arr for the object that has the key "id" matched to the value of the 
+	// parameter id. Returns the matched object.
 	function idMatcher(arr, id) {
 		var matched = false;
 		var index = 0;
@@ -1154,11 +1331,15 @@ function doneDeleting() {
 		return found;
 	}
 
+	// Increases the max height of the list with the id "igt_id" to the point
+	// that the bottom of the list always ends at or before the end of the webpage.
 	function lengthen() {
 		var height = $("#igt").css("height");
 		$("#igtlist").css("max-height", height);
 	}
 
+	// Hides the indepth display of the matched igts an instead shows them the summary of the
+	// matched igts presented by the table with the id "sentences".
 	function goBack() {
 		$("#back").hide();
 		$("#igtdisplay").hide();
@@ -1166,10 +1347,14 @@ function doneDeleting() {
 		$('html,body').scrollTop(0);
 	}
 
+	// igt is any igt object.
+	// Returns an array in which each individual index contains a word item
+	// from the object igt. The words are in the exact order in which they were
+	// stored in the parameter igt.
 	function getWords(igt) {
 		var phrase = getPhrase(igt);
 		var tiers = igt.tiers;
-		var wordTier = findTier(tiers, "words");
+		var wordTier = idMatcher(tiers, "w");
 		var items = wordTier.items;
 		// Factor this code out
 		var words = [];
@@ -1182,6 +1367,11 @@ function doneDeleting() {
 		// End of factoring
 	}
 
+	// segment is a string that is in the form ...[x:y]. Where "..." is any substring
+	// that does not contain the characters "[", ":", or "]" while "x" and "y" are 
+	// integers that represent the beginning and end of the span x-y.
+	// Returns an array where the first index is "x" in the above format and the second
+	// index is "y" in the above format.
 	function getSpan(segment) {
 		var index1 = segment.indexOf("[");
 		var index2 = segment.indexOf(":");
@@ -1192,9 +1382,13 @@ function doneDeleting() {
 		return arr;
 	}
 
+	// igt is any igt object.
+	// Returns an array in which each individual index contains a gloss (morphemic) item
+	// from the object igt. The glosses (morphemic) are in the exact order in which they were
+	// stored in the parameter igt.
 	function getGlosses(igt) {
 		var tiers = igt.tiers;
-		var glossTier = findTier(tiers, "glosses", "g");
+		var glossTier = idMatcher(tiers, "g");
 		var wGlosses = getGlossesW(igt);
 		var items = glossTier.items;
 		// Factor this code out
@@ -1214,9 +1408,13 @@ function doneDeleting() {
 		return glosses;
 	}
 
+	// igt is any igt object.
+	// Returns an array in which each individual index contains a gloss (lexical) item
+	// from the object igt. The glosses (lexical) are in the exact order in which they were
+	// stored in the parameter igt.
 	function getGlossesW(igt) {
 		var tiers = igt.tiers;
-		var glossWTier = findTier(tiers, "glosses", "gw");
+		var glossWTier = idMatcher(tiers, "gw");
 		var tierId = glossWTier.attributes.content;
 		var segment = glossWTier.items[0].attributes.content;
 		var itemId = null;
@@ -1240,6 +1438,8 @@ function doneDeleting() {
 		return glosses;
 	}
 
+	// Parameter igt is any igt object.
+	// Returns an object that contains the ids of the items that were matched by the users query.
 	function getMatchObject(igt) {
 		var metadata = igt.metadata;
 		var matchObject = null;
@@ -1251,6 +1451,14 @@ function doneDeleting() {
 		return matchObject;
 	}
 
+	// This function is triggered when an igt is selected in the table with id "sentences"
+	// or the list with id "igt_id".
+	// Hides table with id "sentences".
+	// Displays the indepth igt display area that has a list of matched igts on its left.
+	// The indepth igt display area shows information of the selected igt.
+	// If indepth igt display area is already being displayed, it shows the indepth information
+	// of the selected igt only.
+	// Scrolls page to top.
 	function igtClick(event) {
 		d3.select("#igt").html("");
   		igtLayout("#igt", event.data.igt);
@@ -1263,6 +1471,10 @@ function doneDeleting() {
   		$('html,body').scrollTop(0);
 	}
 
+	// igts is a an array of igt objects.
+	// Creates rows for the table with id "sentences". It fills the rows' display table data elements (the ones that are used to display
+	// the items that caused the igts to be matched)
+	// with the string representation of the phrase items in these igts.
 	function createPhraseRows(igts) {
 		for (var i = 0; i < igts.length; i++) {
 			var igt = igts[i];
@@ -1289,6 +1501,21 @@ function doneDeleting() {
 		}
 	}
 
+	// div is a div element that contains words from a matched igt. These words are surrounded by span tags.
+	// matchObject is an object that stores the ids of the morphemes that were matched in the same igt from
+	// a query.
+	// morphemeTier is the morpheme tier of the igt object.
+	// idIndex is a integer that counts how much item matches have been highlighted plus the 
+	// morpheme that is currently going to be highlighted.
+	// mainMatchIndex is a integer that determines which morpheme is going to be highlighted.
+	// if matchObject contains more than one id. It is based
+	// on zero based indexing so if mainMatchIndex is zero than the first matched morpheme of the igt
+	// is displayed.
+	// 
+	// Highligts the morpheme in the words contained in the parameter div. mainMatchIndex is used to identify
+	// which morpheme to highlight if there is multiple morpheme matches per one igt. The other matched morphemes
+	// are given a red box around them.
+	// The matched morpheme identified by mainMatchIndex is giving an id based on idIndex.
 	function highlightMatchMorphemes(div, matchObject, morphemeTier, idIndex, mainMatchIndex) {
 		var spans = div.children();
 		var lastWordNum = null;
@@ -1366,6 +1593,15 @@ function doneDeleting() {
 			}
 	}
 
+	// Parameter igt is an igt object that represents a matched igt.
+	// tierType is a string that conveys what type of items caused the igt to be matched.
+	// idIndex is a integer that keeps track of the number of display table data elements
+	// (the ones that are used to display the items that caused the igts to be matched)
+	// have been created plus the one that is currently being created.
+	// 
+	// Returns a table data element that contains either glosses or words of the matched igt
+	// based on the value of tierType.
+	// Gives the table data element an id based on idIndex.
 	function createRightTd(igt, tierType, idIndex) {
 		var items = null;
 		if (tierType == "words" || tierType == "pos" || tierType == "morphemes" || tierType == "phrases") {
@@ -1388,6 +1624,23 @@ function doneDeleting() {
 		return td;
 	}
 
+
+	// div is a div element that contains words from a matched igt.
+	// matchObject is an object that stores the ids of the words that were matched in the same igt from
+	// a query.
+	// idIndex is a integer that counts how much word matches have been highlighted plus the 
+	// word that is currently going to be highlighted.
+	// mainMatchIndex is a integer that determines which word is going to be highlighted in the case that
+	// matchObject contains more than one id. It is based
+	// on zero based indexing so if mainMatchIndex is zero than the first matched word of the igt
+	// is displayed.
+	// matchedItemNumbers is an array that stores integers that repersent the word numbers of the 
+	// words that were a match.
+	//
+	// Highligts a word contained in the parameter div. This is determined by mainMatchIndex if
+	// there is multiple words that are matched to one igt. The other matched words
+	// are given a red box around them.
+	// The matched word identified by mainMatchIndex is giving an id based on idIndex.
 	function highlightMatch(div, mainMatchIndex, matchedItemNumbers, idIndex) {
 		var spans = div.children();
 		for (var j = 0; j < matchedItemNumbers.length; j++) {
@@ -1402,9 +1655,9 @@ function doneDeleting() {
 		}
 	}
 
-
-	
-	
+	// Centers data in the display table data elements (the ones that are used to display
+	// the items that caused the igts to be matched)
+	// in a way that makes all matches aligned vertically.
 	function centerSpans() {
 		var rows = $("#sentences").children();
 		for (var i = 0; i < rows.length - 1; i++) {
@@ -1448,6 +1701,8 @@ function doneDeleting() {
 		}
 	}
 
+	// Shows hidden text of display table data elements (the ones that are used to display
+	// the items that caused the igts to be matched).
 	function showFullText() {
 		var row = $(this);
 		var tds = row.children();
@@ -1463,6 +1718,8 @@ function doneDeleting() {
 		}
 	}
 
+	// Hides overflowing text of display table data elements (the ones that are used to display
+	// the items that caused the igts to be matched).
 	function showPartialText() {
 		var row = $(this);
 		var tds = row.children();
@@ -1475,12 +1732,15 @@ function doneDeleting() {
 		$(tds[3]).css("opacity", "inherit");
 	}
 
-	//third
+	// igt is any igt object.
+	// Returns an array in which each individual index contains a pos item
+	// from the object igt. The poses are in the exact order in which they were
+	// stored in the parameter igt.
 	function getPos(igt) {
 		var tiers = igt.tiers;
-		var posTier = findTier(tiers, "pos", "w-pos");
+		var posTier = idMatcher(tiers, "w-pos");
 		if (posTier == null) {
-			posTier = findTier(tiers, "pos", "gw-pos");
+			posTier = idMatcher(tiers, "gw-pos");
 		}
 		var items = posTier.items;
 		var poses = [];
@@ -1490,6 +1750,10 @@ function doneDeleting() {
 		return poses;
 	}
 
+	// igt is any igt object.
+	// Returns an array in which each individual index contains a morpheme item
+	// from the object igt. The morphemes are in the exact order in which they were
+	// stored in the parameter igt.
 	function getMorphemes(igt) {
 		var words = getWords(igt);
 		var multiDimArr = [];
@@ -1512,3 +1776,75 @@ function doneDeleting() {
 		}
 		return multiDimArr;
 	}
+
+	// Shows helpul info to the user.
+	function showHelpInfo() {
+		$("#helpinfo").slideDown();
+		var button = $("#helpbutton");
+		button.val("Hide");
+		button.unbind("click");
+		button.click(hideHelpInfo);
+
+	}
+
+	// Hides help info from user.
+	function hideHelpInfo() {
+		$("#helpinfo").slideUp();
+		var button = $("#helpbutton");
+		button.val("Help");
+		button.unbind("click");
+		button.click(showHelpInfo);
+	}
+
+	function addLanguages(languageSelectElement) {
+		if (languageSelectElement == undefined) {
+			$(".languageinput").html("");
+		} else {
+			languageSelectElement.html("");
+		}
+		
+		var corpusSelElem = $("#corpus");
+		var selectedCorpus = corpusSelElem.val();
+		$.ajax({
+			url: serverURL + selectedCorpus + "/summary",
+			success: function(result) {
+				var corpusAbbreviation = result.name;
+				var languages = result.languages[corpusAbbreviation];
+				for(var i in languages){
+					var langOption = $("<option></option>");
+					var langString = i + " (" + languages[i] + " igts)";
+					langOption.html(langString);
+					langOption.val(i);
+					if (languageSelectElement == undefined) {
+						$(".languageinput").append(langOption);
+					} else {
+						languageSelectElement.append(langOption);
+					}
+					
+				}
+			}
+		});
+	}
+	/*var fileExample = "nan Taiwanese 567\nnan English 6\nnan Spanish 8\n??? japanese 90";
+
+	function getLanguages() {
+		debugger;
+		var lines = fileExample.split("\n");
+		var results = [];
+		for (var i = 0; i < lines.length; i++) {
+			var line = lines[i];
+			var tokens = line.split(" ");
+			if (tokens[0] == "nan") {
+				results.push(tokens[1]);
+			}
+		}
+	}*/
+
+	/*function newTab() {
+		//window.open("data:text/plain;charset=utf-8,", "", "_blank")
+		//window.open("data:text/plain;charset=utf-8,Whats up", "", "_blank")
+		var data = "<p>This is 'myWindow'</p>";
+		myWindow = window.open("data:text/html," + encodeURIComponent(data),
+		                       "_blank", "width=200,height=100");
+		myWindow.focus();
+	}*/
