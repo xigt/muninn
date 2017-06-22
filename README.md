@@ -48,6 +48,17 @@ Press the green button with the text “Add query”. Pressing this button will 
 
 Press the red button with the text “Remove queries”.
 
+### Information for developers
+
+##### JavaScript Libraries that were used
+
+d3 version 3.5.6 <br />
+jquery version 3.1.1
+
+##### Server
+
+The JavaScript file search.js requires an ODIN server to send GET requests to. To change the server that this file sends GET requests  to, change the url stored in the string global variable "serverURL".
+
 ### Acknowledgments
 
 This work is supported by the National Science Foundation under Grant No.
