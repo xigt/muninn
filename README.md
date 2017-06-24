@@ -57,10 +57,10 @@ jquery version 3.1.1
 
 ##### Server
 
-The JavaScript file search.js requires an ODIN server to send GET requests to. To change the server that this file sends GET requests  to, change the url stored in the string global variable "serverURL".
+The JavaScript file "search.js" requires an ODIN server to send GET requests to. To change the server that this file sends GET requests  to, change the url stored in the string global variable "serverURL".
 
 ### Acknowledgments
 
 This work is supported by the National Science Foundation under Grant No.
-[BCS-0748919](https://www.nsf.gov/awardsearch/showAward?AWD_ID=0748919). Any opinions, findings, and conclusions or recommendations expressed in this material are those of the authors and do not necessarily reflect the views of the NSF. 
+[BCS-0748919](https://www.nsf.gov/awardsearch/showAward?AWD_ID=0748919). Any opinions, findings, and conclusions or recommendations expressed in this material are those of the authors and does not necessarily reflect the views of the NSF. 
 
