@@ -461,4 +461,19 @@ select {
 	color: #333399;
 }
 
+#corpustablebutton:hover {
+	cursor: pointer;
+	background-color: #4CAF50;
+	color: white;
+}
 
+#corpustablebutton {
+	background-color: #f4f7f8;
+    color: black;
+    border: 0;
+    padding: 5px 5px;
+    text-align: center;
+    text-decoration: underline;
+    font-size: 13px;
+    margin-left: 20px;
+}

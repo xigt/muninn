@@ -42,6 +42,7 @@
                 sortCorpusOptions();
                 $("#corpus").change(userChangedCorpus);
                 $("#helpbutton").click(showHelpInfo);
+                $("#corpustablebutton").click(linkToCorpusTable);
                 
         });     
 	};	
@@ -1273,12 +1274,15 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		liTag.classList.add("selected");
 		currListItem = liTag.getAttribute("id");
 	}
-
+	var count = 0;
 	// igt is any igt object.
 	// Returns parameter igt's phrase item's string representation.
 	function getPhrase(igt) {
 		var tiers = igt.tiers;
 		var phraseTier = idMatcher(tiers, "p");
+		debugger;
+		console.log(count)
+		count++;
 		if (phraseTier.items[0].text != undefined) {
 			return igt.id + " " + phraseTier.items[0].text;
 		} else {
@@ -1825,26 +1829,8 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 			}
 		});
 	}
-	/*var fileExample = "nan Taiwanese 567\nnan English 6\nnan Spanish 8\n??? japanese 90";
 
-	function getLanguages() {
-		debugger;
-		var lines = fileExample.split("\n");
-		var results = [];
-		for (var i = 0; i < lines.length; i++) {
-			var line = lines[i];
-			var tokens = line.split(" ");
-			if (tokens[0] == "nan") {
-				results.push(tokens[1]);
-			}
-		}
-	}*/
-
-	/*function newTab() {
-		//window.open("data:text/plain;charset=utf-8,", "", "_blank")
-		//window.open("data:text/plain;charset=utf-8,Whats up", "", "_blank")
-		var data = "<p>This is 'myWindow'</p>";
-		myWindow = window.open("data:text/html," + encodeURIComponent(data),
-		                       "_blank", "width=200,height=100");
-		myWindow.focus();
-	}*/
+	function linkToCorpusTable() {
+		window.open("../static/languagecodetable.html");
+	}
+	
