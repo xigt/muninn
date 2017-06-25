@@ -470,10 +470,39 @@ select {
 #corpustablebutton {
 	background-color: #f4f7f8;
     color: black;
-    border: 0;
+    border: 1px solid black;
     padding: 5px 5px;
     text-align: center;
-    text-decoration: underline;
     font-size: 13px;
     margin-left: 20px;
+    border-radius: 4px;
+}
+
+#reftable {
+	width: 100%;
+	margin-right: auto;
+	margin-left: auto;
+	text-align: left;
+	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 14px;
+    border-bottom: 1px solid #ddd;
+    display: none;
+}
+
+#reftable th, #reftable td {
+	padding: 8px;
+    line-height: 1.42857143;
+}
+
+#reftable th {
+	text-align: center;
+}
+
+#reftable tr:nth-child(even){
+	background-color: #ddd;
+}
+
+#refbuttonloadingicon {
+	vertical-align: middle;
+	display: none;
 }

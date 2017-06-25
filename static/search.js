@@ -42,7 +42,7 @@
                 sortCorpusOptions();
                 $("#corpus").change(userChangedCorpus);
                 $("#helpbutton").click(showHelpInfo);
-                $("#corpustablebutton").click(linkToCorpusTable);
+                $("#corpustablebutton").click(getCorpusRefTable);
                 
         });     
 	};	
@@ -64,7 +64,9 @@ var currDeleting = false;
 // Stores the query path of the most current query.
 var currentSavedQueryPath;
 
-var serverURL = "http://odin.xigt.org/v1/corpora/";
+var serverURL = "http://odin.xigt.org";
+
+var refTableIsLoaded = false;
 
 // Downloads a xml or json file that contains all matched igts of most recent search.
 // If download xml button is clicked a xml file is downloaded.
@@ -311,8 +313,8 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 
 	var name = document.forms.searchForm.corpus.value;
 	if (path2 != null) {
-		$.when($.ajax(serverURL + name + "/igts?path=" + path),
-				$.ajax(serverURL + name + "/igts?path=" + path2)).done(function(a, b) {
+		$.when($.ajax(serverURL + "/v1/corpora/" + name + "/igts?path=" + path),
+				$.ajax(serverURL + "/v1/corpora/" + name + "/igts?path=" + path2)).done(function(a, b) {
 				var d = a[0];
 				var igts2 = b[0].igts;
 				var data;
@@ -328,7 +330,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		});
 	} else {
 		$.ajax({
-			url: serverURL + name + "/igts?path=" + path,
+			url: serverURL + "/v1/corpora/" + name + "/igts?path=" + path,
 			success: function(result) {
 				var data = {d: result, tierType: tierType, tier1: tier1, tier2: tier2, igts2: undefined};
 				loadingImg.hide();
@@ -582,7 +584,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 			}
 		}
 		var xmlJsonDownloadInfo = {
-			url: serverURL + name,
+			url: serverURL + "/v1/corpora/" + name,
 			ids: ids
 		}
 		savedMainQueryPaths.push(xmlJsonDownloadInfo);
@@ -1280,7 +1282,9 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 	function getPhrase(igt) {
 		var tiers = igt.tiers;
 		var phraseTier = idMatcher(tiers, "p");
-		debugger;
+		if (phraseTier == null) {
+			return "";
+		}
 		console.log(count)
 		count++;
 		if (phraseTier.items[0].text != undefined) {
@@ -1294,28 +1298,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		}
 	}
 
-	// tiers is the array in an igt object that is accessed by the key "tiers".
-	// 
-	/*function findTier(tiers, type, id) {
-		var found = false;
-		var position = 0;
-		var foundTier = null;
-		while (!found && position <= tiers.length - 1) {
-			if (tiers[position].type == type) {
-				if (id != null) {
-					if (tiers[position].id == id) {
-						foundTier = tiers[position];
-						found = true;
-					}
-				} else {
-					foundTier = tiers[position];
-					found = true;
-				}
-			}
-			position++;
-		}
-		return foundTier;
-	}*/
+	
 
 	// arr is an array that contains objects with an id property.
 	// id is a string that represents an id.
@@ -1810,7 +1793,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		var corpusSelElem = $("#corpus");
 		var selectedCorpus = corpusSelElem.val();
 		$.ajax({
-			url: serverURL + selectedCorpus + "/summary",
+			url: serverURL + "/v1/corpora/" + selectedCorpus + "/summary",
 			success: function(result) {
 				var corpusAbbreviation = result.name;
 				var languages = result.languages[corpusAbbreviation];
@@ -1830,7 +1813,50 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		});
 	}
 
-	function linkToCorpusTable() {
-		window.open("../static/languagecodetable.html");
+	function getCorpusRefTable() {
+		if (!refTableIsLoaded) {
+			$("#refbuttonloadingicon").show();
+			$.ajax({
+				url: serverURL + "/v1/languages",
+				success: function(result) {
+					fillRefTable(result);
+				}
+			})
+		} else {
+			$("#reftable").slideDown();
+			var corpusTableButton = $("#corpustablebutton");
+			corpusTableButton.unbind("click");
+			corpusTableButton.click(hideRefTable);
+			corpusTableButton.val("Hide corpus code and language name reference table");
+		}
+	}
+
+	function fillRefTable(languageInfo) {
+		var languageInfoRows = languageInfo.languages;
+		for (var i = 0; i < languageInfoRows.length; i++) {
+			var row = languageInfoRows[i];
+			var tr = $("<tr></tr>");
+			var numberOfColums = 3;
+			for (var j = 0; j < numberOfColums; j++) {
+				var td = $("<td></td>");
+				td.html(row[j]);
+				tr.append(td);
+			}
+			$("#reftable").append(tr);
+		}
+		$("#refbuttonloadingicon").hide();
+		$("#reftable").show();
+		var corpusTableButton = $("#corpustablebutton");
+		corpusTableButton.unbind("click");
+		corpusTableButton.click(hideRefTable);
+		corpusTableButton.val("Hide corpus code and language name reference table");
+		refTableIsLoaded = true;
 	}
 	
+	function hideRefTable() {
+		$("#reftable").slideUp();
+		var corpusTableButton = $("#corpustablebutton");
+		corpusTableButton.unbind("click");
+		corpusTableButton.click(getCorpusRefTable);
+		corpusTableButton.val("Show corpus code and language name reference table");
+	}

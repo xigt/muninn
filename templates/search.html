@@ -100,7 +100,17 @@
 					<div id="firstformdiv">
 						<label for="corpus">Corpus:</label>
 					    <select id="corpus" name="corpus"></select>	
-					    <input type="button" id="corpustablebutton" value="Corpus code and language name reference table"/>						
+					    <input type="button" id="corpustablebutton" value="Show corpus code and language name reference table"/>
+					    <img src="../static/spin.svg" alt="loading icon" id="refbuttonloadingicon" />
+					</div>
+					<div id="reftablediv">
+						<table id="reftable">
+							<tr>
+								<th>Corpus Code</th>
+								<th>Language Name</th>
+								<th>Number of IGTS</th>
+							</tr>
+						</table>
 					</div>
 					<div id="downloaddiv">
 						<a href="#" class="buttonDownload" id="xmldownloadbutton">Download XML</a>
