@@ -383,18 +383,11 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		label3.css("display", "none");
 		label3.prop("for", "languageinput" + refineLevel);
 
-		//This is just until txt file is made.
-		/*var taiwanOpt = $("<option></option>").html("Taiwanese");
-		taiwanOpt.val("Taiwanese");
-		input3.append(taiwanOpt);*/
-
 		var add = $("<input/>").attr("type", "button");
 		var selLabel = $("<label></label>");
 		var label1 = $("<label></label>");
 		var label2 = $("<label></label>");
 		
-		
-
 		label1.html("word:");
 		label2.css("display", "none");
 		selLabel.html("Search for:");
@@ -458,16 +451,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 			}
 		}
 	}
-
-	/*function hideExtraSearchDiv() {
-		$(this).val("Search in found igts");
-		var children = $(".refinebuttoncontainer").children();
-		if (children[2] != undefined) {
-			$(children[2]).remove();
-		}
-		$(this).unbind("click");
-		$(this).click(addExtraSearchDiv);
-	}*/
 
 	// Provides the following parameters to the method lookForHelper:
 	// input1, input2, tierType, idParameter, p, loadingImg, and input3.
@@ -710,7 +693,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 	// Hides indepth igt display area.
 	// Shows loading animation to user.
 	function refineLoadingAnimation() {
-		/*d3.select("#num").selectAll("p").remove();*/
 		d3.select("#igt_id").selectAll("li").remove();
 		d3.select("#sentences").selectAll("tr").remove();
 		$("#igt").html("");
