@@ -64,8 +64,12 @@ var currDeleting = false;
 // Stores the query path of the most current query.
 var currentSavedQueryPath;
 
+// This is a variable that stores the url of the server that will be used
+// for GET requests. Change the url to change the server this file sends
+// GET requests to.
 var serverURL = "http://odin.xigt.org";
 
+// Keeps track if the corpus code and language name refrence table is already loaded.
 var refTableIsLoaded = false;
 
 // Downloads a xml or json file that contains all matched igts of most recent search.
