@@ -257,7 +257,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		var tokens = tierType.split(" ");
 		var tier1 = tokens[0];
 		var tier2 = tokens[tokens.length - 1];
-		/*tierType = tier1;*/
 		var primaryTierValue = "";
 		if (input2.val() != "") {
 			primaryTierValue = "[value()=\"" + input2.val() + "\"]";
@@ -323,7 +322,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 				} else {
 					data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};
 				}
-				/*var data = {d: d, tierType: tierType, tier1: tier1, tier2: tier2, igts2: igts2};*/
 				loadingImg.hide();
 				p.html("Number of Igts found: " + d.igt_count);
 				layeredSearch(data, name);
@@ -520,7 +518,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 				}
 			}
 			var p = $(children[9]);
-			/*p.html("");*/
 			var allPs = $(".numofigts");
 			for (var i = searchLevel; i < allPs.length; i++) {
 				$(allPs[i]).html("");
@@ -1163,7 +1160,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 			thirdLabel = $(children[7]);
 			thirdInput = $(children[8]);
 		}
-		/*}*/
 		var option = sel.val();
 		var words = option.split(" ");
 		secondInput.val("");
@@ -1343,7 +1339,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		var tiers = igt.tiers;
 		var wordTier = idMatcher(tiers, "w");
 		var items = wordTier.items;
-		// Factor this code out
 		var words = [];
 		for (var i = 0; i < items.length; i++) {
 			var span = getSpan(items[i].attributes.segmentation);
@@ -1351,7 +1346,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 			words.push(word);
 		}
 		return words;
-		// End of factoring
 	}
 
 	// segment is a string that is in the form ...[x:y]. Where "..." is any substring
@@ -1601,7 +1595,6 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		var div = $("<div></div>");
 		div.attr("id", "datatd" + idIndex);
 		td.append(div);
-		//td.attr("id", "datatd" + idIndex);
 		for (var i = 0; i < items.length; i++) {
 			var span = $("<span></span>");
 			span.html(items[i]);
@@ -1783,6 +1776,11 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		button.click(showHelpInfo);
 	}
 
+	// Parameter languageSelectElement is a select element that will be populated with option 
+	// elements for each language contained in the igts of the selected corpus.
+	// Populates the select element represented by the parameter languageSelectElement
+	// with options. Each option corresponds to a language contained in the igts of the selected
+	// corpus.
 	function addLanguages(languageSelectElement) {
 		if (languageSelectElement == undefined) {
 			$(".languageinput").html("");
@@ -1813,6 +1811,12 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		});
 	}
 
+	// If the corpus code and language name table is already made, displays this
+	// table. 
+	// If not, sends GET request to receive a JSON object that contains information
+	// on what language(s) are contained in each corpus. This object will
+	// be used to create the rows for the corpus code and language name table that has 
+	// the id "reftable".
 	function getCorpusRefTable() {
 		if (!refTableIsLoaded) {
 			$("#refbuttonloadingicon").show();
@@ -1831,6 +1835,14 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		}
 	}
 
+	// Parameter languageInfo is an JSON object returned from the query: serverURL + "/v1/languages". 
+	// This object contains information on what language(s) are contained in each corpus.
+	// Uses parameter languageInfo to fill the table with id "reftable" with rows.
+	// There is one row for each language and corpus pair. For example if a corpus
+	// contained 3 languages, there would be three rows. Each of these three rows
+	// would have the same corpus code on the first column, their distinct language names
+	// in the second column, and the number of igts in that corpus that contain each of these 
+	// languages in the third column.
 	function fillRefTable(languageInfo) {
 		var languageInfoRows = languageInfo.languages;
 		for (var i = 0; i < languageInfoRows.length; i++) {
@@ -1853,6 +1865,7 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		refTableIsLoaded = true;
 	}
 	
+	// Hides corpus code and language name Reference Table
 	function hideRefTable() {
 		$("#reftable").slideUp();
 		var corpusTableButton = $("#corpustablebutton");
