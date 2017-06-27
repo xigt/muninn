@@ -65,6 +65,11 @@ var serverURL = "http://odin.xigt.org";
 ```
 Change this variable to use a different server.
 
+##### Project Files
+
+The `static/` directory contains the css style sheet, the javascript file, and the image files for this GUI.
+The `templates/` directory contains the HTML file for this GUI.
+
 ### Acknowledgments
 
 This work is supported by the National Science Foundation under Grant No.
