@@ -57,7 +57,13 @@ jquery version 3.1.1
 
 ##### Server
 
-The JavaScript file "search.js" requires an ODIN server to send GET requests to. To change the server that this file sends GET requests  to, change the url stored in the string global variable "serverURL".
+
+The JavaScript file "search.js" communicates with an instance of the [sleipnir](https://github.com/xigt/sleipnir) IGT server. Currently this JavaScript file is configured to use the ODIN instance via the `serverURL` variable ;
+
+```javascript
+var serverURL = "http://odin.xigt.org";
+```
+Change this variable to use a different server.
 
 ### Acknowledgments
 
