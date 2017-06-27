@@ -450,13 +450,11 @@ select {
 
 #corpustablebutton:hover {
 	cursor: pointer;
-	background-color: #4CAF50;
-	color: white;
 }
 
 #corpustablebutton {
-	background-color: #f4f7f8;
-    color: black;
+	background-color: #4CAF50;
+	color: white;
     border: 1px solid black;
     padding: 5px 5px;
     text-align: center;
