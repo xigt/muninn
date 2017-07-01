@@ -53,7 +53,9 @@ Press the red button with the text “Remove queries”.
 ##### JavaScript Libraries that were used
 
 d3 version 3.5.6 <br />
-jquery version 3.1.1
+jquery version 3.1.1 <br />
+jquery-ui.css version 1.12.1 <br />
+jquery-ui.min.js version 1.12.1
 
 ##### Server
 
