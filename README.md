@@ -70,7 +70,12 @@ Change this variable to use a different server.
 ##### Project Files
 
 The `static/` directory contains the css style sheet, the javascript file, and the image files for this GUI.
-The `templates/` directory contains the HTML file for this GUI.
+The `templates/` directory contains the HTML file for this GUI. <br />
+
+The HTML page uses the files `xigtviz.css` and `xigtviz.js` which are located in the following URLs respectively: <br />
+`https://rawgit.com/xigt/xigtviz/master/xigtviz.css` <br />
+`https://rawgit.com/xigt/xigtviz/master/xigtviz.js`
+
 
 ### Acknowledgments
 
