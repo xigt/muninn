@@ -5,46 +5,38 @@
 	// Attaches click event handlers to buttons.
 	// Alphabetizes options in the select element with id corpus.
 	window.onload = function () {
-		d3.xhr("http://odin.xigt.org/v1/corpora")
-        .mimeType("application/json")
-        .response(function(xhr) { return JSON.parse(xhr.responseText); })
-        .get(function(error, d) {
-            if (error) throw error;
-            d3.select("#corpus")
-              .selectAll("option")
-              .data(d.corpora)
-              .enter().append("option")
-              
-                .text(function(d) {
-                    return d.name + " (" + d.igt_count + ") ";
-                })
-   
-                .attr("value", function(d){return d.id;});
-                $("#xmldownloadbutton").click(download);
-                $("#jsondownloadbutton").click(download);
-                $("#selectallbutton").click(selectAll);
-                $("#back").click(goBack);
-                $("#searchbarsdiv").prepend(addExtraSearchDiv);
+		$.ajax({
+			url: serverURL + "/v1/corpora",
+			success: function(result) {
+				makeCorpusNameIdDict(result.corpora);
+				fillCorpusDropDown();
+				sortCorpusOptions();
+			}
+		});
+		
+        $("#xmldownloadbutton").click(download);
+        $("#jsondownloadbutton").click(download);
+        $("#selectallbutton").click(selectAll);
+        $("#back").click(goBack);
+        $("#searchbarsdiv").prepend(addExtraSearchDiv);
 
-                
-				var submit = $("#submit");
-				submit.click(refineSearch);
-				
-                var div = $("#controlpanel");
-                var addButton = $("#addButton");
-                addButton.click(function() {
-                	div.before(addExtraSearchDiv);
-                });
-                
-                var subButton = $("#subButton");
-                subButton.click(subtractQueries);
-                
-                sortCorpusOptions();
-                $("#corpus").change(userChangedCorpus);
-                $("#helpbutton").click(showHelpInfo);
-                $("#corpustablebutton").click(getCorpusRefTable);
-                
-        });     
+        
+		var submit = $("#submit");
+		submit.click(refineSearch);
+		
+        var div = $("#controlpanel");
+        var addButton = $("#addButton");
+        addButton.click(function() {
+        	div.before(addExtraSearchDiv);
+        });
+        
+        var subButton = $("#subButton");
+        subButton.click(subtractQueries);
+        
+            
+        $("#corpus").change(userChangedCorpus);
+        $("#helpbutton").click(showHelpInfo);
+        $("#corpustablebutton").click(getCorpusRefTable);     
 	};	
 })();
 // Keeps track of the most recently clicked igt
@@ -71,6 +63,50 @@ var serverURL = "http://odin.xigt.org";
 
 // Keeps track if the corpus code and language name refrence table is already loaded.
 var refTableIsLoaded = false;
+
+// This is a dictionary that will be used to store information about copora in the database.
+// This dictionary will have keys that are the ids for each corpus. 
+// Each key is aligned to a javascript object.
+// These objects have to following format:
+// {
+// name => corpus code,
+// igt_count => number of igts in the corpus
+// }
+var corpusNameIdDict = {};
+
+// corpora is an array that contains corpus objects for each corpus
+// in the database.
+// Makes the global variable "corpusNameIdDict" into a dictionary. The dictionary
+// has keys that are the ids for each corpus. Each key is aligned to a javascript object.
+// These objects have to following format:
+// {
+// name => corpus code,
+// igt_count => number of igts in the corpus
+// }
+function makeCorpusNameIdDict(corpora) {
+	for (var i = 0; i < corpora.length; i++) {
+		var name = corpora[i].name;
+		var id = corpora[i].id;
+		var igtCount = corpora[i].igt_count;
+		corpusNameIdDict[id] = {name: name, igt_count: igtCount};
+	}
+}
+
+// Fills the corpus drop down selection with option elements. Each option
+// element has an id for a corpus in the database as its value property. Also,
+// each option element contains in its inner HTML the corpus code and number of igts
+// of the corpus id it stores in its value property.
+function fillCorpusDropDown() {
+	for (var id in corpusNameIdDict) {
+	  if (corpusNameIdDict.hasOwnProperty(id)) {
+	  	var opt = $("<option></option>");
+	    opt.html(corpusNameIdDict[id].name + " (" + corpusNameIdDict[id].igt_count + ") ");
+	    opt.val(id);
+	    $("#corpus").append(opt);
+	  }
+	}
+}
+
 
 // Downloads a xml or json file that contains all matched igts of most recent search.
 // If download xml button is clicked a xml file is downloaded.
@@ -1834,10 +1870,18 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		for (var i = 0; i < languageInfoRows.length; i++) {
 			var row = languageInfoRows[i];
 			var tr = $("<tr></tr>");
-			var numberOfColums = 3;
-			for (var j = 0; j < numberOfColums; j++) {
+			for (var j = 0; j < row.length; j++) {
 				var td = $("<td></td>");
-				td.html(row[j]);
+				if (j == row.length - 1) {
+					corpusName = corpusNameIdDict[row[j]].name;
+					corpusIgtCount = corpusNameIdDict[row[j]].igt_count;
+					td.html(corpusName);
+					td.click(changeCorpusFocus);
+					td.addClass("reftablefourthcol");
+				} else {
+					td.html(row[j]);
+				}
+				
 				tr.append(td);
 			}
 			$("#reftable").append(tr);
@@ -1849,6 +1893,23 @@ function lookForHelper(input1, input2, tierType, idParameter, p, loadingImg, inp
 		corpusTableButton.click(hideRefTable);
 		corpusTableButton.val("Hide corpus code and language name reference table");
 		refTableIsLoaded = true;
+	}
+
+	// Triggered when a corpus code in the reference table is clicked.
+	// Hides the reference table.
+	// Changes the selected corpus displayed in the select element with the id "corpus" to 
+	// the corpus with the the code that was clicked on.
+	function changeCorpusFocus() {
+		var corpusSel = $("#corpus");
+		var opts = corpusSel.children();
+		for (var i = 0; i < opts.length; i++) {
+			if ($(opts[i]).html().split(" ")[0] == $(this).html()) {
+				corpusSel[0].selectedIndex = i + "";
+			}
+		}
+		hideRefTable();
+		corpusSel.effect("highlight", {color: "#80b3ff"}, 3000);
+		userChangedCorpus();
 	}
 	
 	// Hides corpus code and language name Reference Table

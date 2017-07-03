@@ -8,6 +8,7 @@
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 		<script type="text/javascript">
+
 			var settings = {
 					    "tier_types": {
 					        "words": { "class": "interlinear" },
@@ -35,6 +36,8 @@
 		</script>
   		<script src="https://rawgit.com/xigt/xigtviz/master/xigtviz.js" charset="utf-8"></script>
   		<link rel="stylesheet" type="text/css" href="../static/searchStyle.css">
+  		<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css" />
+		<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 	</head>
 
 	<body>
@@ -97,15 +100,16 @@
 					<div id="firstformdiv">
 						<label for="corpus">Corpus:</label>
 					    <select id="corpus" name="corpus"></select>	
-					    <input type="button" id="corpustablebutton" value="Show corpus code and language name reference table"/>
+					    <input type="button" id="corpustablebutton" value="Show corpus code and language code/name reference table"/>
 					    <img src="../static/spin.svg" alt="loading icon" id="refbuttonloadingicon" />
 					</div>
 					<div id="reftablediv">
 						<table id="reftable">
 							<tr>
-								<th>Corpus Code</th>
+								<th>Language Code</th>
 								<th>Language Name</th>
 								<th>Number of IGTS</th>
+								<th>Corpus Code</th>
 							</tr>
 						</table>
 					</div>
